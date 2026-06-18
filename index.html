@@ -203,85 +203,132 @@ textarea{resize:vertical;min-height:56px}
 .ocr-supp-row{display:flex;align-items:center;gap:8px;padding:10px;background:var(--il);border-radius:var(--r);margin-bottom:12px;font-size:12px}
 
 
-/* ═══════════ RESPONSIVE MOBILE ═══════════ */
-/* Overlay mobile */
-#mobOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:199;backdrop-filter:blur(2px)}
-#mobOverlay.open{display:block}
-/* Hamburger button - hidden on desktop */
-#mobHam{display:none;align-items:center;justify-content:center;width:38px;height:38px;border-radius:8px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);cursor:pointer;color:#6366f1;font-size:20px;margin-right:6px;flex-shrink:0}
-/* Close btn in sidebar */
-#sbClose{display:none;position:absolute;top:12px;right:12px;width:30px;height:30px;border-radius:6px;background:rgba(255,255,255,.1);border:none;cursor:pointer;color:#94a3b8;font-size:18px;align-items:center;justify-content:center}
+/* ═══════════════════════════════════════════════════
+   RESPONSIVE MOBILE — chantier-finance-demo
+   ═══════════════════════════════════════════════════ */
 
-/* === TABLET (≤900px) === */
+/* ── Éléments mobile uniquement (cachés sur desktop) ── */
+#mobOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:199;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+#mobOverlay.open{display:block}
+#mobHam{display:none;align-items:center;justify-content:center;width:38px;height:38px;border-radius:8px;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.25);cursor:pointer;color:#6366f1;font-size:20px;flex-shrink:0}
+#sbClose{display:none;position:absolute;top:12px;right:12px;width:28px;height:28px;border-radius:6px;background:rgba(255,255,255,.12);border:none;cursor:pointer;color:#94a3b8;font-size:18px;align-items:center;justify-content:center}
+#mobNav{display:none;position:fixed;bottom:0;left:0;right:0;background:#1e293b;border-top:1px solid rgba(255,255,255,.1);z-index:190;padding:4px 0;padding-bottom:calc(4px + env(safe-area-inset-bottom))}
+.mob-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 2px;cursor:pointer;color:#64748b;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;border:none;background:none;-webkit-tap-highlight-color:transparent}
+.mob-nav-item i{font-size:22px}
+.mob-nav-item.active{color:#818cf8}
+
+/* ── TABLETTE ≤900px ── */
 @media(max-width:900px){
   .kg{grid-template-columns:repeat(2,1fr)!important}
   .kg3{grid-template-columns:repeat(2,1fr)!important}
 }
 
-/* === MOBILE (≤768px) === */
+/* ── MOBILE ≤768px ── */
 @media(max-width:768px){
+  /* Fix structure principale — éviter overflow:hidden qui bloque le scroll */
+  html,body{overflow-x:hidden}
+  .app{height:auto!important;min-height:100dvh;min-height:100vh;overflow:visible!important;flex-direction:column}
+  .mn{overflow:visible!important;width:100%!important;min-width:0}
+  .ct{flex:none!important;overflow-y:visible!important;overflow-x:hidden;padding:12px 10px 90px!important}
+
   /* Sidebar: tiroir latéral */
-  .sb{position:fixed;left:0;top:0;height:100vh;z-index:200;transform:translateX(-100%);transition:transform .28s cubic-bezier(.4,0,.2,1);box-shadow:4px 0 24px rgba(0,0,0,.25);width:270px!important}
-  .sb.mob-open{transform:translateX(0)}
+  .sb{position:fixed!important;left:0;top:0;bottom:0;height:100%!important;z-index:200;transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);box-shadow:6px 0 32px rgba(0,0,0,.3);width:260px!important;overflow-y:auto}
+  .sb.mob-open{transform:translateX(0)!important}
   #sbClose{display:flex}
   #mobHam{display:flex}
-  /* Main: pleine largeur */
-  .mn{width:100%!important}
+  #mobNav{display:flex!important}
+
   /* Toolbar */
-  .tb{padding:10px 14px!important}
-  .pgtt{font-size:14px!important}
-  /* Content area */
-  .ct{padding:12px!important}
-  /* Grids */
+  .tb{height:48px!important;padding:0 10px!important;flex-shrink:0}
+  .pgtt{font-size:13px!important}
+
+  /* Grilles CSS classes */
   .kg{grid-template-columns:1fr 1fr!important;gap:8px!important}
   .kg3{grid-template-columns:1fr!important;gap:8px!important}
   .g2{grid-template-columns:1fr!important;gap:8px!important}
-  .g2r{grid-template-columns:1fr!important}
-  /* Tables: scroll horizontal */
-  .tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:8px}
-  table{min-width:560px}
-  /* Modals: plein écran sur mobile */
+  .g2r{grid-template-columns:1fr!important;gap:8px!important}
+
+  /* KPI cards: taille réduite */
+  .kc{padding:12px!important}
+  .kv{font-size:15px!important}
+  .ki{width:32px!important;height:32px!important;font-size:15px!important}
+
+  /* Éviter zoom iOS sur inputs (min 16px) */
+  input,select,textarea{font-size:16px!important}
+  input[type=number],input[type=text],input[type=date]{font-size:16px!important}
+
+  /* Tables: scroll horizontal dans leur wrapper */
+  .tw{overflow-x:auto!important;-webkit-overflow-scrolling:touch}
+  .tw table,.tw thead,.tw tbody,.tw tr,.tw td,.tw th{min-width:0}
+  table{min-width:500px}
+
+  /* Modals: plein écran depuis le bas */
   .mo{align-items:flex-end!important;padding:0!important}
-  .md{width:100%!important;max-width:100vw!important;max-height:92vh!important;border-radius:16px 16px 0 0!important;padding:20px 16px!important;margin:0!important}
-  .md-sm{width:100%!important}
-  /* Cards */
-  .kc{padding:14px!important}
-  .kv{font-size:18px!important}
-  /* Dashboard chart area */
-  .dash-charts{grid-template-columns:1fr!important}
-  /* Devis/paiements cards: 1 col */
-  .dv-mosaique,.pay-cards-grid{grid-template-columns:1fr!important}
-  /* OCR layout */
-  .ocr-layout{grid-template-columns:1fr!important}
-  /* Rapports */
-  .rp-grid{grid-template-columns:1fr!important}
-  /* Cat progress grid */
-  .cat-prog-grid{grid-template-columns:1fr!important}
-  /* Phase accordéon */
-  .ph-acc-row{flex-wrap:wrap}
-  /* Doc grid */
-  .doc-grid{grid-template-columns:1fr 1fr!important}
-  /* Inline edit inputs */
-  .inline-edit-block{flex-direction:column;gap:4px}
-  /* Bottom nav bar */
-  #mobNav{display:flex!important}
+  .md{width:100vw!important;max-width:100vw!important;max-height:93vh!important;border-radius:20px 20px 0 0!important;padding:20px 14px 24px!important;margin:0!important;box-sizing:border-box!important}
+  .md-sm{width:100vw!important;max-width:100vw!important}
+
+  /* Override inline grids 3 colonnes dans les sections dashboard */
+  #dashFinCards{grid-template-columns:1fr!important}
+
+  /* Override inline grids 2 colonnes dans les modals */
+  .fg-grid-2{grid-template-columns:1fr!important}
+
+  /* OCR layout: colonne unique */
+  #ocrStep3 > div:first-child{grid-template-columns:1fr!important;gap:10px!important}
+  .ocr-field{grid-template-columns:24px 1fr 1fr 50px!important;font-size:11px!important}
+
+  /* Rapports: 1 colonne */
+  #rapPdfCards{grid-template-columns:1fr!important}
+
+  /* Canvas max-width */
+  canvas{max-width:100%!important}
+
+  /* Charts: hauteur réduite sur mobile */
+  #dashChartBar,#dashChartDough{height:160px!important;max-height:160px!important}
+
+  /* Badges Approuvé/Versé/Reste dans les cards: plus petits */
+  .fin-badges-3{grid-template-columns:1fr 1fr 1fr!important;gap:4px!important}
+  .fin-badge-val{font-size:10px!important}
+
+  /* Flex wrapping général */
+  .pgt{flex-wrap:wrap;gap:6px!important}
+  .pgt .btn{font-size:11px!important;padding:5px 8px!important}
+
+  /* Devis/paiements grilles auto */
+  .dv-mosaique,[class*="dv-"]{grid-template-columns:1fr!important}
+  .pay-cards-grid{grid-template-columns:1fr!important}
+
+  /* Boutons plus faciles à toucher */
+  .btn{min-height:36px}
+  .btn-sm{min-height:30px;padding:4px 8px!important}
+
+  /* Sections titre */
+  .pgt{margin-bottom:10px!important}
+
+  /* Dashboard KPI 3-col → 1 col sur mobile */
+  #dashFinCards{grid-template-columns:1fr!important;gap:8px!important}
+
+  /* OCR Step3: colonne unique */
+  #ocrStep3Grid{grid-template-columns:1fr!important;gap:10px!important}
+
+  /* Modal grilles 2-col → 1 col */
+  .fg-grid-2{grid-template-columns:1fr!important;gap:8px!important}
+
+  /* Rapports: 1 col */
+  #rapPdfCards{grid-template-columns:1fr!important;gap:8px!important}
+
+  /* Charts: responsive */
+  #dashChartBar,#dashChartDough{max-height:180px!important}
+  .chart-wrap{min-height:unset!important}
 }
 
-/* === PETITS MOBILES (≤400px) === */
-@media(max-width:400px){
-  .kg{grid-template-columns:1fr!important}
-  .kv{font-size:16px!important}
-  .doc-grid{grid-template-columns:1fr!important}
-}
-
-/* Bottom navigation bar (mobile only) */
-#mobNav{display:none;position:fixed;bottom:0;left:0;right:0;background:#1e293b;border-top:1px solid rgba(255,255,255,.1);z-index:190;padding:6px 4px calc(6px + env(safe-area-inset-bottom));gap:0}
-.mob-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;cursor:pointer;color:#64748b;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;border:none;background:none;transition:color .2s}
-.mob-nav-item i{font-size:20px}
-.mob-nav-item.active{color:#818cf8}
-/* Adjust main content for bottom nav on mobile */
-@media(max-width:768px){
-  .ct{padding-bottom:80px!important}
+/* ── PETITS MOBILES ≤420px ── */
+@media(max-width:420px){
+  .kg{grid-template-columns:1fr 1fr!important}
+  .kv{font-size:14px!important}
+  .ct{padding:8px 8px 90px!important}
+  .tb{padding:0 8px!important}
+  .md{padding:16px 10px 20px!important}
 }
 
 </style>
@@ -683,7 +730,7 @@ textarea{resize:vertical;min-height:56px}
   <div class="mh"><span class="mt" id="mQuoteTitle">Nouveau devis</span><button class="mc" onclick="closeModal('mQuote')"><i class="ti ti-x"></i></button></div>
   <div class="fg"><label>Phase *</label><select id="qPhase"></select></div>
   <div class="fg"><label>Fournisseur</label><select id="qSupp"><option value="">— Aucun —</option></select></div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" class="fg-grid-2">
     <div class="fg"><label>Numéro devis</label><input type="text" id="qNum" placeholder="DEV-001"></div>
     <div class="fg"><label>Date</label><input type="date" id="qDt"></div>
   </div>
@@ -723,11 +770,11 @@ textarea{resize:vertical;min-height:56px}
     </label>
 
     <div id="qPayFields" style="display:none;background:#f8fffe;border:1px solid #d1fae5;border-radius:8px;padding:14px;margin-top:8px;">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" class="fg-grid-2">
         <div class="fg"><label>Date versement *</label><input type="date" id="qpDt"></div>
         <div class="fg"><label>Montant (FCFA) *</label><input type="number" id="qpAmt" step="1000" placeholder="0" style="color:#10b981;font-weight:600"></div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" class="fg-grid-2">
         <div class="fg"><label>Méthode de paiement</label>
           <select id="qpMeth">
             <option value="virement">Virement bancaire</option>
@@ -807,7 +854,7 @@ textarea{resize:vertical;min-height:56px}
 <div class="mo" id="mDoc">
 <div class="md">
   <div class="mh"><span class="mt" id="mDocTitle">Ajouter un document</span><button class="mc" onclick="closeModal('mDoc')"><i class="ti ti-x"></i></button></div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" class="fg-grid-2">
     <div class="fg" style="grid-column:span 2"><label>Nom du document *</label><input type="text" id="dNm" placeholder="Ex : Facture fondation phase B…"></div>
     <div class="fg"><label>Type *</label>
       <select id="dType">
@@ -1055,7 +1102,7 @@ function renderDash() {
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:4px">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:4px" id="dashFinCards">
       <div style="background:#fff;border-radius:12px;padding:16px;border:1px solid var(--bd);border-top:3px solid #6366f1;box-shadow:0 1px 4px rgba(0,0,0,.05)">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
           <div style="width:32px;height:32px;border-radius:8px;background:#ede9fe;display:flex;align-items:center;justify-content:center">
@@ -1113,7 +1160,7 @@ function renderDash() {
         <span style="font-size:10px;color:#94a3b8">${s.phCount} phases · ${s.qCount} devis</span>
         <span style="font-size:13px;font-weight:800;color:${barCol}">${s.pct}%</span>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px" class="fin-badges-3">
         <div style="background:#ede9fe;border-radius:6px;padding:5px 8px">
           <div style="font-size:9px;color:#6366f1;font-weight:700;text-transform:uppercase">Approuvé</div>
           <div style="font-size:11px;font-weight:800;color:#4338ca">${fmtN(s.amount)}</div>
@@ -1375,7 +1422,7 @@ function renderCats() {
           </div>
         </div>
         <div style="padding:12px;background:var(--sf)">
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px" class="fin-badges-3">
             <div style="text-align:center;padding:5px;background:#ede9fe;border-radius:6px">
               <div style="font-size:9px;color:#6366f1;font-weight:700">Approuvé</div>
               <div style="font-size:10px;font-weight:800;color:#4338ca">${fmtN(s.amount)}</div>
@@ -1943,7 +1990,7 @@ function renderPaiements() {
         `</div>` +
         `<span style="font-size:15px;font-weight:900;color:#10b981">${fmtN(catTotal)} <span style="font-size:10px;font-weight:400;color:#94a3b8">FCFA versés</span></span>` +
         `</div>` +
-        `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px">` +
+        `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px" class="fin-badges-3">` +
         `<div style="background:#ede9fe;border-radius:6px;padding:6px 8px">` +
         `<div style="font-size:9px;color:#6366f1;font-weight:700;text-transform:uppercase">Devis approuvés</div>` +
         `<div style="font-size:12px;font-weight:800;color:#4338ca">${fmtN(s.amount)} FCFA</div>` +
@@ -3865,7 +3912,7 @@ function syncMobNav(page) {
 
     <!-- Step 3 : Results -->
     <div id="ocrStep3" class="ocr-step" style="display:none">
-      <div style="display:grid;grid-template-columns:280px 1fr;gap:16px;align-items:start">
+      <div style="display:grid;grid-template-columns:280px 1fr;gap:16px;align-items:start" id="ocrStep3Grid">
 
         <!-- Left: PDF Preview -->
         <div>
