@@ -1018,7 +1018,7 @@ function allQuotes() {
 function allPaymentsFlat() {
   const r=[];
   allQuotes().forEach(q => (q.project_payments||[]).forEach(p => r.push({...p, _quote:q, _cat:q._cat, _supplier:q._supplier})));
-  return r.sort((a,b) => (b.payment_date||'').localeCompare(a.payment_date||''));
+  return r.sort((a,b) => (b.date||'').localeCompare(a.date||''));
 }
 
 // ══ DB status ════════════════════════════════════
@@ -2676,7 +2676,7 @@ function pdfGlobal() {
   y = doc.lastAutoTable.finalY + 10;
 
   // Section : Derniers paiements (20 max)
-  const recentPays = [...pays].sort((a,b)=>b.payment_date.localeCompare(a.payment_date)).slice(0,20);
+  const recentPays = [...pays].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,20);
   if(recentPays.length > 0) {
     if(y > 220) { doc.addPage(); pdfAddHeader(doc,'Rapport Global — Suite','Derniers paiements'); y=35; }
     y = pdfAddSectionTitle(doc, 'Derniers paiements (20 derniers)', y);
@@ -2684,9 +2684,9 @@ function pdfGlobal() {
       startY: y,
       head: [['Date','Référence','Montant','Méthode','Devis']],
       body: recentPays.map(p=>{
-        const q = allQuotes().find(x=>x.id===p.project_quote_id);
-        return [fmtD(p.payment_date), p.reference||'—', fmtN(p.amount)+' FCFA',
-          p.payment_method||'—', q?q.reference+' ('+q.label+')':'—'];
+        const q = allQuotes().find(x=>x.id===p.quote_id);
+        return [fmtD(p.date), p.reference||'—', fmtN(p.amount)+' FCFA',
+          p.method||'—', q?q.reference+' ('+q.label+')':'—'];
       }),
       columnStyles:{0:{cellWidth:22},2:{halign:'right'},4:{cellWidth:55}}
     });
@@ -2781,15 +2781,15 @@ function pdfCategorie(catId) {
 
   // Paiements
   const allPays=allQ.flatMap(q=>(q.project_payments||[]).map(p=>({...p,quote:q})));
-  allPays.sort((a,b)=>b.payment_date.localeCompare(a.payment_date));
+  allPays.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   if(allPays.length>0){
     if(y>200){doc.addPage();pdfAddHeader(doc,'Catégorie : '+cat.name,'Paiements');y=35;}
     y=pdfAddSectionTitle(doc,'Paiements ('+allPays.length+')',y,[70,80,100]);
     pdfAutoTable(doc,{
       startY:y,
       head:[['Date','Référence','Devis','Montant','Méthode','Note']],
-      body:allPays.map(p=>[fmtD(p.payment_date),p.reference||'—',p.quote?p.quote.label:'—',
-        fmtN(p.amount)+' FCFA',p.payment_method||'—',p.note||'']),
+      body:allPays.map(p=>[fmtD(p.date),p.reference||'—',p.quote?p.quote.label:'—',
+        fmtN(p.amount)+' FCFA',p.method||'—',p.note||'']),
       foot:[['TOTAL','','',fmtN(allPays.reduce((a,p)=>a+p.amount,0))+' FCFA','','']],
       columnStyles:{0:{cellWidth:22},3:{halign:'right'},4:{cellWidth:22}}
     });
@@ -2863,16 +2863,16 @@ function pdfFournisseur(suppId) {
 
   // Paiements du fournisseur
   const suppPays=suppQuotes.flatMap(q=>(q.project_payments||[]).map(p=>({...p,quote:q})));
-  suppPays.sort((a,b)=>b.payment_date.localeCompare(a.payment_date));
+  suppPays.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   if(suppPays.length>0){
     if(y>210){doc.addPage();pdfAddHeader(doc,'Fournisseur : '+supp.name,'Paiements');y=35;}
     y=pdfAddSectionTitle(doc,'Paiements effectués ('+suppPays.length+')',y,[30,70,130]);
     pdfAutoTable(doc,{
       startY:y,
       head:[['Date','Référence','Devis','Montant','Méthode','Note']],
-      body:suppPays.map(p=>[fmtD(p.payment_date),p.reference||'—',
+      body:suppPays.map(p=>[fmtD(p.date),p.reference||'—',
         p.quote?p.quote.reference+' – '+p.quote.label:'—',
-        fmtN(p.amount)+' FCFA',p.payment_method||'—',p.note||'']),
+        fmtN(p.amount)+' FCFA',p.method||'—',p.note||'']),
       foot:[['TOTAL','','',fmtN(suppPays.reduce((a,p)=>a+p.amount,0))+' FCFA','','']],
       columnStyles:{0:{cellWidth:22},2:{cellWidth:55},3:{halign:'right'},4:{cellWidth:25}}
     });
@@ -2896,8 +2896,8 @@ function pdfChronologique(dateFrom, dateTo) {
   let y = pdfAddHeader(doc,'Rapport Chronologique',subtitle);
 
   // Filter payments in period
-  const pays=allPaymentsFlat().filter(p=>p.payment_date>=dateFrom&&p.payment_date<=dateTo);
-  pays.sort((a,b)=>b.payment_date.localeCompare(a.payment_date));
+  const pays=allPaymentsFlat().filter(p=>(p.date||'')>=dateFrom&&(p.date||'')<=dateTo);
+  pays.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   // Filter quotes by emission date (use created_at as proxy, or filter by payment dates)
   const allQ=allQuotes();
   const quotesInPeriod=allQ.filter(q=>{
@@ -2925,10 +2925,10 @@ function pdfChronologique(dateFrom, dateTo) {
       startY:y,
       head:[['Date','Référence','Devis associé','Fournisseur','Montant','Méthode']],
       body:pays.map(p=>{
-        const q=allQ.find(x=>x.id===p.project_quote_id);
+        const q=allQ.find(x=>x.id===p.quote_id);
         const supp=q?suppliers.find(s=>s.id===q.supplier_id):null;
-        return[fmtD(p.payment_date),p.reference||'—',q?q.reference+' – '+q.label:'—',
-          supp?supp.name:'—',fmtN(p.amount)+' FCFA',p.payment_method||'—'];
+        return[fmtD(p.date),p.reference||'—',q?q.reference+' – '+q.label:'—',
+          supp?supp.name:'—',fmtN(p.amount)+' FCFA',p.method||'—'];
       }),
       foot:[['TOTAL','','','',fmtN(totPays)+' FCFA','']],
       columnStyles:{0:{cellWidth:22},2:{cellWidth:55},4:{halign:'right'},5:{cellWidth:25}}
@@ -4045,4 +4045,4 @@ function syncMobNav(page) {
 </div>
 
 </body>
-</html>
+</html>                                                                                                                            
