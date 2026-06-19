@@ -331,6 +331,41 @@ textarea{resize:vertical;min-height:56px}
   .md{padding:16px 10px 20px!important}
 }
 
+/* ══════════════════════════════════════════
+   MOBILE LAYOUTS SPÉCIAUX
+   ══════════════════════════════════════════ */
+
+/* ── FOURNISSEURS : table → cards ── */
+@media(max-width:768px){
+  #pg-fournisseurs .tw{overflow:visible!important;border:none!important;background:none!important;border-radius:0}
+  #pg-fournisseurs table,#pg-fournisseurs tbody{display:block;width:100%;min-width:0!important}
+  #pg-fournisseurs thead{display:none}
+  #pg-fournisseurs tbody tr{display:block;background:var(--sf);border:1px solid var(--bd);border-radius:12px;margin-bottom:12px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.06);position:relative}
+  #pg-fournisseurs tbody td{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border:none!important;font-size:13px;gap:8px;min-height:28px}
+  #pg-fournisseurs tbody td::before{content:attr(data-label);font-weight:600;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.04em;flex-shrink:0;min-width:90px}
+  #pg-fournisseurs tbody td:first-child{font-size:16px;font-weight:800;color:var(--tx);padding-bottom:10px;margin-bottom:6px;border-bottom:1px solid var(--bd)}
+  #pg-fournisseurs tbody td:first-child::before{display:none}
+  #pg-fournisseurs tbody td:last-child::before{display:none}
+  #pg-fournisseurs tbody td:last-child{padding-top:10px;margin-top:4px;border-top:1px solid var(--bd);justify-content:flex-end}
+  #pg-fournisseurs tbody td.supp-total{background:#f0fdf4;border-radius:8px;padding:8px 10px!important;margin:6px 0;border:none!important}
+  #pg-fournisseurs tbody td.supp-total::before{color:#10b981}
+
+  /* ── DASHBOARD : charts en colonne unique ── */
+  #dashChartsGrid{grid-template-columns:1fr!important;gap:8px!important}
+  #dashChartsGrid .card{grid-column:unset!important}
+  #dashChartsGrid>div:last-child{flex-direction:row!important;gap:8px!important}
+
+  /* ── DASHBOARD : masquer colonnes larges dans tableau paiements ── */
+  .dash-pay-hide{display:none!important}
+
+  /* ── PAIEMENTS : header catégorie compact ── */
+  .pay-hdr-right{flex-direction:column!important;gap:0!important;width:100%}
+  .pay-hdr-divider{display:none!important}
+  .pay-hdr-stats{display:grid!important;grid-template-columns:1fr 1fr!important;gap:6px!important;width:100%;margin-top:6px}
+  .pay-hdr-stat{text-align:left!important;background:rgba(255,255,255,.15);border-radius:7px;padding:6px 8px}
+  .pay-hdr-pct{grid-column:span 2;display:flex!important;align-items:center;gap:8px;background:rgba(255,255,255,.1);border-radius:7px;padding:6px 10px}
+}
+
 </style>
 </head>
 <body>
@@ -392,7 +427,7 @@ textarea{resize:vertical;min-height:56px}
 <div class="pg active" id="pg-dash">
   <div class="kg" id="dashKpis"></div>
   <div id="dashAlerts"></div>
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+  <div id="dashChartsGrid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
     <div class="card" style="grid-column:span 2">
       <div class="ctt" style="margin-bottom:8px"><i class="ti ti-chart-bar" style="color:var(--in)"></i>Devis par catégorie</div>
       <canvas id="chartCat" height="140"></canvas>
@@ -411,7 +446,7 @@ textarea{resize:vertical;min-height:56px}
   <div class="card">
     <div class="ctt"><i class="ti ti-clock" style="color:var(--tx2)"></i>Derniers paiements</div>
     <div class="tw"><table>
-      <thead><tr><th>Date</th><th>Devis</th><th>Fournisseur</th><th>Montant</th><th>Méthode</th></tr></thead>
+      <thead><tr><th>Date</th><th>Devis</th><th class="dash-pay-hide">Fournisseur</th><th>Montant</th><th class="dash-pay-hide">Méthode</th></tr></thead>
       <tbody id="dashPays"></tbody>
     </table></div>
   </div>
@@ -983,7 +1018,7 @@ function allQuotes() {
 function allPaymentsFlat() {
   const r=[];
   allQuotes().forEach(q => (q.project_payments||[]).forEach(p => r.push({...p, _quote:q, _cat:q._cat, _supplier:q._supplier})));
-  return r.sort((a,b) => b.date.localeCompare(a.date));
+  return r.sort((a,b) => (b.payment_date||'').localeCompare(a.payment_date||''));
 }
 
 // ══ DB status ════════════════════════════════════
@@ -1192,12 +1227,12 @@ function renderDash() {
         </div>
         <div style="font-size:10px;color:#94a3b8;padding-left:13px">${esc(p._cat.name)}</div>
       </td>
-      <td style="color:#64748b;font-size:11px">${esc(p._supplier?.name||'—')}</td>
+      <td class="dash-pay-hide" style="color:#64748b;font-size:11px">${esc(p._supplier?.name||'—')}</td>
       <td style="text-align:right">
         <div style="font-weight:800;color:#10b981;font-size:13px">${fmtN(p.amount)}</div>
         <div style="font-size:9px;color:#94a3b8">FCFA</div>
       </td>
-      <td><span class="bv bk" style="font-size:10px">${esc(methodLabel(p.method))}</span></td>
+      <td class="dash-pay-hide"><span class="bv bk" style="font-size:10px">${esc(methodLabel(p.method))}</span></td>
     </tr>`
   ).join('') : '<tr><td colspan="5" class="empty" style="padding:20px">Aucun paiement</td></tr>';
 
@@ -1823,6 +1858,8 @@ function setPaysView(v) {
 }
 
 function renderPaiements() {
+  // Sur mobile, la vue tableau est illisible → basculer automatiquement en cartes
+  if(window.innerWidth <= 768 && paysView === 'tableau') paysView = 'cartes';
   ['tableau','cartes','resume'].forEach(k=>{const b=document.getElementById('pvBtn-'+k);if(b)b.classList.toggle('active',k===paysView);});
   const pays = allPaymentsFlat();
   const total = pays.reduce((s,p)=>s+Number(p.amount),0);
@@ -1840,46 +1877,68 @@ function renderPaiements() {
     .filter(id=>byCat[id].length>0)
     .map(id=>({cat:categories.find(c=>c.id===id)||pays.find(p=>p._cat.id===id)._cat, pays:byCat[id]}));
 
-  // Category header for paiements
+  // Category header for paiements — responsive mobile/desktop
   function payCatHdr(cat, catPays) {
     const totVerse = catPays.reduce((s,p)=>s+Number(p.amount),0);
     const s = catStats(cat);
     const bal = s.amount - s.paid;
     const pct = s.pct;
-    const barCol = pct>=100?'#10b981':pct>50?'#6366f1':'#f59e0b';
     const col = cat.color||'#6366f1';
-    return `<div style="background:${col};border-radius:10px 10px 0 0;padding:11px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    const isMob = window.innerWidth <= 768;
+    const statsHtml = isMob
+      ? `<div class="pay-hdr-stats">
+          <div class="pay-hdr-stat">
+            <div style="font-size:9px;color:rgba(255,255,255,.75);font-weight:700;text-transform:uppercase">Approuvé</div>
+            <div style="font-size:13px;font-weight:800;color:#fff">${fmtN(s.amount)}</div>
+          </div>
+          <div class="pay-hdr-stat">
+            <div style="font-size:9px;color:rgba(255,255,255,.75);font-weight:700;text-transform:uppercase">Total versé</div>
+            <div style="font-size:13px;font-weight:800;color:#d1fae5">${fmtN(totVerse)}</div>
+          </div>
+          <div class="pay-hdr-stat">
+            <div style="font-size:9px;color:rgba(255,255,255,.75);font-weight:700;text-transform:uppercase">Reste à payer</div>
+            <div style="font-size:13px;font-weight:800;color:${bal>0?'#fef3c7':'#d1fae5'}">${fmtN(bal)}</div>
+          </div>
+          <div class="pay-hdr-pct">
+            <div style="flex:1;background:rgba(255,255,255,.3);border-radius:4px;height:6px">
+              <div style="height:6px;border-radius:4px;background:#fff;width:${pct}%"></div>
+            </div>
+            <span style="font-size:14px;font-weight:900;color:#fff;flex-shrink:0">${pct}%</span>
+          </div>
+        </div>`
+      : `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <div style="text-align:right">
+            <div style="font-size:9px;color:rgba(255,255,255,.7);font-weight:700;text-transform:uppercase">Devis approuvés</div>
+            <div style="font-size:12px;font-weight:800;color:#fff;white-space:nowrap">${fmtN(s.amount)} FCFA</div>
+          </div>
+          <div style="width:1px;height:28px;background:rgba(255,255,255,.3)"></div>
+          <div style="text-align:right">
+            <div style="font-size:9px;color:rgba(255,255,255,.7);font-weight:700;text-transform:uppercase">Total versé</div>
+            <div style="font-size:12px;font-weight:800;color:#d1fae5;white-space:nowrap">${fmtN(totVerse)} FCFA</div>
+          </div>
+          <div style="width:1px;height:28px;background:rgba(255,255,255,.3)"></div>
+          <div style="text-align:right">
+            <div style="font-size:9px;color:rgba(255,255,255,.7);font-weight:700;text-transform:uppercase">Reste à payer</div>
+            <div style="font-size:12px;font-weight:800;color:${bal>0?'#fef3c7':'#d1fae5'};white-space:nowrap">${fmtN(bal)} FCFA</div>
+          </div>
+          <div style="text-align:center;min-width:55px">
+            <div style="font-size:16px;font-weight:900;color:#fff">${pct}%</div>
+            <div style="background:rgba(255,255,255,.3);border-radius:4px;height:4px">
+              <div style="height:4px;border-radius:4px;background:#fff;width:${pct}%"></div>
+            </div>
+          </div>
+        </div>`;
+    return `<div style="background:${col};border-radius:10px 10px 0 0;padding:${isMob?'12px':'11px 16px'};display:flex;align-items:${isMob?'flex-start':'center'};justify-content:space-between;flex-wrap:wrap;gap:10px">
       <div style="display:flex;align-items:center;gap:10px">
-        <div style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center">
+        <div style="width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0">
           <i class="ti ti-category" style="color:#fff;font-size:16px"></i>
         </div>
         <div>
-          <div style="font-weight:800;font-size:14px;color:#fff">${esc(cat.name)}</div>
+          <div style="font-weight:800;font-size:${isMob?'15px':'14px'};color:#fff">${esc(cat.name)}</div>
           <div style="font-size:11px;color:rgba(255,255,255,.75)">${catPays.length} versement(s)</div>
         </div>
       </div>
-      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-        <div style="text-align:right">
-          <div style="font-size:9px;color:rgba(255,255,255,.7);font-weight:700;text-transform:uppercase">Devis approuvés</div>
-          <div style="font-size:12px;font-weight:800;color:#fff;white-space:nowrap">${fmtN(s.amount)} FCFA</div>
-        </div>
-        <div style="width:1px;height:28px;background:rgba(255,255,255,.3)"></div>
-        <div style="text-align:right">
-          <div style="font-size:9px;color:rgba(255,255,255,.7);font-weight:700;text-transform:uppercase">Total versé</div>
-          <div style="font-size:12px;font-weight:800;color:#d1fae5;white-space:nowrap">${fmtN(totVerse)} FCFA</div>
-        </div>
-        <div style="width:1px;height:28px;background:rgba(255,255,255,.3)"></div>
-        <div style="text-align:right">
-          <div style="font-size:9px;color:rgba(255,255,255,.7);font-weight:700;text-transform:uppercase">Reste à payer</div>
-          <div style="font-size:12px;font-weight:800;color:${bal>0?'#fef3c7':'#d1fae5'};white-space:nowrap">${fmtN(bal)} FCFA</div>
-        </div>
-        <div style="text-align:center;min-width:55px">
-          <div style="font-size:16px;font-weight:900;color:#fff">${pct}%</div>
-          <div style="background:rgba(255,255,255,.3);border-radius:4px;height:4px">
-            <div style="height:4px;border-radius:4px;background:#fff;width:${pct}%"></div>
-          </div>
-        </div>
-      </div>
+      ${statsHtml}
     </div>`;
   }
 
@@ -2061,13 +2120,21 @@ function renderFournisseurs() {
   document.getElementById('suppList').innerHTML = suppliers.length ? suppliers.map(s => {
     const sq = quotes.filter(q=>q.supplier_id===s.id);
     const total = sq.reduce((sum,q)=>sum+Number(q.amount),0);
+    const paid  = sq.reduce((sum,q)=>sum+(q.project_payments||[]).reduce((a,p)=>a+Number(p.amount),0),0);
     const sn = (s.name||'').replace(/'/g,"\\'");
-    return `<tr><td><strong>${esc(s.name)}</strong></td>` +
-      `<td>${esc(s.speciality||'—')}</td>` +
-      `<td>${esc(s.phone||'—')}</td>` +
-      `<td>${esc(s.email||'—')}</td>` +
-      `<td style="font-size:11px;color:var(--tx2)">${esc(s.address||'—')}</td>` +
-      `<td style="font-weight:600">${fmtN(total)} FCFA <span class="bv bk">${sq.length} devis</span></td>` +
+    return `<tr>` +
+      `<td data-label="Nom"><strong>${esc(s.name)}</strong></td>` +
+      `<td data-label="Spécialité">${esc(s.speciality||'—')}</td>` +
+      `<td data-label="Téléphone"><a href="tel:${esc(s.phone||'')}" style="color:var(--in);text-decoration:none">${esc(s.phone||'—')}</a></td>` +
+      `<td data-label="Email"><a href="mailto:${esc(s.email||'')}" style="color:var(--in);text-decoration:none;font-size:12px">${esc(s.email||'—')}</a></td>` +
+      `<td data-label="Adresse" style="font-size:11px;color:var(--tx2)">${esc(s.address||'—')}</td>` +
+      `<td data-label="Total devis" class="supp-total" style="font-weight:600">` +
+        `<span style="color:#6366f1;font-weight:800">${fmtN(total)} FCFA</span>` +
+        `<span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">` +
+          `<span class="bv bk">${sq.length} devis</span>` +
+          `<span style="font-size:11px;color:#10b981">${fmtN(paid)} versé</span>` +
+        `</span>` +
+      `</td>` +
       `<td><div style="display:flex;gap:4px">` +
       `<button class="btn btn-sm btn-ic" onclick="editSupp('${s.id}')"><i class="ti ti-edit"></i></button>` +
       `<button class="btn btn-sm btn-ic" style="color:var(--rd)" onclick="confirmDel('fournisseur','${sn}',()=>delSupp('${s.id}'))"><i class="ti ti-trash"></i></button>` +
@@ -2617,7 +2684,7 @@ function pdfGlobal() {
       startY: y,
       head: [['Date','Référence','Montant','Méthode','Devis']],
       body: recentPays.map(p=>{
-        const q = allQuotesFlat().find(x=>x.id===p.project_quote_id);
+        const q = allQuotes().find(x=>x.id===p.project_quote_id);
         return [fmtD(p.payment_date), p.reference||'—', fmtN(p.amount)+' FCFA',
           p.payment_method||'—', q?q.reference+' ('+q.label+')':'—'];
       }),
@@ -2627,7 +2694,7 @@ function pdfGlobal() {
   }
 
   // Section : Devis par statut
-  const allQ = allQuotesFlat();
+  const allQ = allQuotes();
   if(allQ.length>0){
     if(y>220){doc.addPage();pdfAddHeader(doc,'Rapport Global — Suite','Récapitulatif devis');y=35;}
     y=pdfAddSectionTitle(doc,'Récapitulatif des devis',y);
@@ -2758,7 +2825,7 @@ function pdfFournisseur(suppId) {
   y+=22;
 
   // Devis du fournisseur
-  const suppQuotes=allQuotesFlat().filter(q=>q.supplier_id===suppId);
+  const suppQuotes=allQuotes().filter(q=>q.supplier_id===suppId);
   const totAmt=suppQuotes.reduce((a,q)=>a+q.amount,0);
   const totPaid=suppQuotes.reduce((a,q)=>a+(q.project_payments?q.project_payments.reduce((b,p)=>b+p.amount,0):0),0);
   const totBal=totAmt-totPaid;
@@ -2832,7 +2899,7 @@ function pdfChronologique(dateFrom, dateTo) {
   const pays=allPaymentsFlat().filter(p=>p.payment_date>=dateFrom&&p.payment_date<=dateTo);
   pays.sort((a,b)=>b.payment_date.localeCompare(a.payment_date));
   // Filter quotes by emission date (use created_at as proxy, or filter by payment dates)
-  const allQ=allQuotesFlat();
+  const allQ=allQuotes();
   const quotesInPeriod=allQ.filter(q=>{
     if(q.emission_date) return q.emission_date>=dateFrom&&q.emission_date<=dateTo;
     return q.created_at&&q.created_at.split('T')[0]>=dateFrom&&q.created_at.split('T')[0]<=dateTo;
