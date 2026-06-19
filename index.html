@@ -2524,7 +2524,7 @@ function pdfAddHeader(doc, title, subtitle) {
   doc.circle(18, 14, 8, 'F');
   doc.setFontSize(9);
   doc.setTextColor(...PDF_COLORS.white);
-  doc.setFont('helvetica','bold');
+  doc.setFont('times','bold');
   doc.text('VRZ', 18, 17, {align:'center'});
   // Title
   doc.setFontSize(15);
@@ -2554,7 +2554,7 @@ function pdfAddFooter(doc, pageNum, totalPages) {
   doc.setLineWidth(0.3);
   doc.line(10, H-12, W-10, H-12);
   doc.setFontSize(7);
-  doc.setFont('helvetica','normal');
+  doc.setFont('times','normal');
   doc.setTextColor(...PDF_COLORS.text2);
   doc.text('Chantier Finance — '+(activeProject?activeProject.name:''), 10, H-7);
   doc.text('Page '+pageNum+' / '+totalPages, W-10, H-7, {align:'right'});
@@ -2565,9 +2565,9 @@ function pdfAddSectionTitle(doc, text, y, color) {
   doc.setFillColor(...(color||PDF_COLORS.primary));
   doc.rect(10, y, W-20, 7, 'F');
   doc.setFontSize(8);
-  doc.setFont('helvetica','bold');
+  doc.setFont('times','bold');
   doc.setTextColor(...PDF_COLORS.white);
-  doc.text(text.toUpperCase(), 14, y+4.8);
+  doc.text(text.toUpperCase()), 14, y+4.8);
   return y+10;
 }
 
@@ -2577,12 +2577,12 @@ function pdfKpiBox(doc, label, value, x, y, w, h, color) {
   doc.setDrawColor(...(color||PDF_COLORS.primary));
   doc.setLineWidth(0.5);
   doc.line(x, y, x, y+h);
-  doc.setFontSize(7);
-  doc.setFont('helvetica','normal');
+  doc.setFontSize(8);
+  doc.setFont('times','normal');
   doc.setTextColor(...PDF_COLORS.text2);
   doc.text(label, x+4, y+5);
-  doc.setFontSize(9);
-  doc.setFont('helvetica','bold');
+  doc.setFontSize(10);
+  doc.setFont('times','bold');
   doc.setTextColor(...(color||PDF_COLORS.text));
   doc.text(value, x+4, y+11);
 }
@@ -2591,10 +2591,10 @@ function pdfAutoTable(doc, opts) {
   doc.autoTable(Object.assign({
     startY: opts.startY,
     margin: {left:10, right:10},
-    styles: {fontSize:7, cellPadding:3, font:'helvetica', textColor:PDF_COLORS.text},
-    headStyles: {fillColor:PDF_COLORS.header_bg, textColor:PDF_COLORS.white, fontStyle:'bold', fontSize:7},
+    styles: {fontSize:8, cellPadding:3.5, font:'times', textColor:PDF_COLORS.text},
+    headStyles: {fillColor:PDF_COLORS.header_bg, textColor:PDF_COLORS.white, fontStyle:'bold', fontSize:8, font:'times'},
     alternateRowStyles: {fillColor:PDF_COLORS.row_alt},
-    footStyles: {fillColor:PDF_COLORS.primary, textColor:PDF_COLORS.white, fontStyle:'bold', fontSize:7},
+    footStyles: {fillColor:PDF_COLORS.primary, textColor:PDF_COLORS.white, fontStyle:'bold', fontSize:8, font:'times'},
     tableLineColor: PDF_COLORS.border,
     tableLineWidth: 0.2,
     didDrawPage: (data) => {
@@ -2611,7 +2611,7 @@ function pdfFinalizePageNumbers(doc) {
   for(let i=1; i<=total; i++) {
     doc.setPage(i);
     doc.setFontSize(7);
-    doc.setFont('helvetica','normal');
+    doc.setFont('times','normal');
     doc.setTextColor(...PDF_COLORS.text2);
     doc.text('Page '+i+' / '+total, W-10, H-7, {align:'right'});
   }
@@ -2686,7 +2686,7 @@ function pdfGlobal() {
       body: recentPays.map(p=>{
         const q = allQuotes().find(x=>x.id===p.quote_id);
         return [fmtD(p.date), p.reference||'—', fmtN(p.amount)+' FCFA',
-          p.method||'—', q?q.reference+' ('+q.label+')':'—'];
+          p.method||'—', q?(q.number||'—')+' – '+q.description:'—'];
       }),
       columnStyles:{0:{cellWidth:22},2:{halign:'right'},4:{cellWidth:55}}
     });
@@ -2705,7 +2705,7 @@ function pdfGlobal() {
       body:allQ.map(q=>{
         const paid=q.project_payments?q.project_payments.reduce((a,p)=>a+p.amount,0):0;
         const supp=suppliers.find(s=>s.id===q.supplier_id);
-        return[q.reference||'—',q.label,supp?supp.name:'—',fmtN(q.amount)+' FCFA',
+        return[q.number||'—',q.description,supp?supp.name:'—',fmtN(q.amount)+' FCFA',
           fmtN(paid)+' FCFA',fmtN(q.amount-paid)+' FCFA',statusMap[q.status]||q.status];
       }),
       foot:[['TOTAL','','',fmtN(allQ.reduce((a,q)=>a+q.amount,0))+' FCFA',
@@ -2769,7 +2769,7 @@ function pdfCategorie(catId) {
         const supp=suppliers.find(s=>s.id===q.supplier_id);
         const paid=q.project_payments?q.project_payments.reduce((a,p)=>a+p.amount,0):0;
         const statusMap={'pending':'Attente','approved':'Approuvé','partial':'Partiel','paid':'Soldé','rejected':'Rejeté'};
-        return[q.reference||'—',q.label,ph?ph.name:'—',supp?supp.name:'—',
+        return[q.number||'—',q.description,ph?ph.name:'—',supp?supp.name:'—',
           fmtN(q.amount)+' FCFA',fmtN(paid)+' FCFA',statusMap[q.status]||q.status];
       }),
       foot:[['TOTAL','','','',fmtN(allQ.reduce((a,q)=>a+q.amount,0))+' FCFA',
@@ -2788,7 +2788,7 @@ function pdfCategorie(catId) {
     pdfAutoTable(doc,{
       startY:y,
       head:[['Date','Référence','Devis','Montant','Méthode','Note']],
-      body:allPays.map(p=>[fmtD(p.date),p.reference||'—',p.quote?p.quote.label:'—',
+      body:allPays.map(p=>[fmtD(p.date),p.reference||'—',p.quote?p.quote.description:'—',
         fmtN(p.amount)+' FCFA',p.method||'—',p.note||'']),
       foot:[['TOTAL','','',fmtN(allPays.reduce((a,p)=>a+p.amount,0))+' FCFA','','']],
       columnStyles:{0:{cellWidth:22},3:{halign:'right'},4:{cellWidth:22}}
@@ -2852,7 +2852,7 @@ function pdfFournisseur(suppId) {
           }
           if(catName!=='—')break;
         }
-        return[q.reference||'—',q.label,catName,fmtN(q.amount)+' FCFA',
+        return[q.number||'—',q.description,catName,fmtN(q.amount)+' FCFA',
           fmtN(paid)+' FCFA',fmtN(q.amount-paid)+' FCFA',statusMap[q.status]||q.status];
       }),
       foot:[['TOTAL','','',fmtN(totAmt)+' FCFA',fmtN(totPaid)+' FCFA',fmtN(totBal)+' FCFA','']],
@@ -2871,7 +2871,7 @@ function pdfFournisseur(suppId) {
       startY:y,
       head:[['Date','Référence','Devis','Montant','Méthode','Note']],
       body:suppPays.map(p=>[fmtD(p.date),p.reference||'—',
-        p.quote?p.quote.reference+' – '+p.quote.label:'—',
+        p.quote?(p.quote.number||'—')+' – '+p.quote.description:'—',
         fmtN(p.amount)+' FCFA',p.method||'—',p.note||'']),
       foot:[['TOTAL','','',fmtN(suppPays.reduce((a,p)=>a+p.amount,0))+' FCFA','','']],
       columnStyles:{0:{cellWidth:22},2:{cellWidth:55},3:{halign:'right'},4:{cellWidth:25}}
@@ -2927,7 +2927,7 @@ function pdfChronologique(dateFrom, dateTo) {
       body:pays.map(p=>{
         const q=allQ.find(x=>x.id===p.quote_id);
         const supp=q?suppliers.find(s=>s.id===q.supplier_id):null;
-        return[fmtD(p.date),p.reference||'—',q?q.reference+' – '+q.label:'—',
+        return[fmtD(p.date),p.reference||'—',q?(q.number||'—')+' – '+q.description:'—',
           supp?supp.name:'—',fmtN(p.amount)+' FCFA',p.method||'—'];
       }),
       foot:[['TOTAL','','','',fmtN(totPays)+' FCFA','']],
@@ -2950,7 +2950,7 @@ function pdfChronologique(dateFrom, dateTo) {
       head:[['Réf.','Désignation','Fournisseur','Montant','Statut']],
       body:quotesInPeriod.map(q=>{
         const supp=suppliers.find(s=>s.id===q.supplier_id);
-        return[q.reference||'—',q.label,supp?supp.name:'—',
+        return[q.number||'—',q.description,supp?supp.name:'—',
           fmtN(q.amount)+' FCFA',statusMap[q.status]||q.status];
       }),
       foot:[['TOTAL','','',fmtN(quotesInPeriod.reduce((a,q)=>a+q.amount,0))+' FCFA','']],
@@ -3392,7 +3392,7 @@ function exportCSV() {
 
 // ══ Utils ═════════════════════════════════════════
 function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
-function fmtN(n){return Number(n||0).toLocaleString('fr-FR');}
+function fmtN(n){return Number(n||0).toLocaleString('fr-FR').replace(/ /g,' ');}
 function fmtD(iso){if(!iso)return'—';const d=new Date(iso);return isNaN(d)?iso:d.toLocaleDateString('fr-CA',{day:'2-digit',month:'short',year:'numeric'});}
 function toast(msg,type='ok'){const tc=document.getElementById('toasts');const t=document.createElement('div');t.className='toast '+type;t.innerHTML='<i class="ti '+(type==='ok'?'ti-circle-check':'ti-circle-x')+'"></i><span>'+msg+'</span>';tc.appendChild(t);setTimeout(()=>{t.style.animation='tso .2s ease forwards';setTimeout(()=>t.remove(),200);},3500);}
 
@@ -4045,4 +4045,4 @@ function syncMobNav(page) {
 </div>
 
 </body>
-</html>                                                                                                                            
+</html>                                                                                                         
