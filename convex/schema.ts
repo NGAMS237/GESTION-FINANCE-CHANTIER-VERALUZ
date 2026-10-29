@@ -91,14 +91,16 @@ export default defineSchema({
 
   project_documents: defineTable({
     project_id: v.id("projects"),
-    storage_id: v.id("_storage"),
+    cat_id: nullable(v.id("project_categories")),
+    // Absent pour une fiche sans fichier joint.
+    storage_id: nullable(v.id("_storage")),
     name: nullable(v.string()),
     doc_type: nullable(v.string()),
     supplier_id: nullable(v.id("project_suppliers")),
     doc_date: nullable(v.string()),
     amount: nullable(v.number()),
     description: nullable(v.string()),
-    file_name: v.string(),
+    file_name: nullable(v.string()),
     file_size: nullable(v.number()),
     mime_type: nullable(v.string()),
     // Date de création Supabase, conservée à l'import ; sinon _creationTime.

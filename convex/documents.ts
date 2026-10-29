@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation } from "./_generated/server";
 import { requireUser } from "./lib/access";
 import { deleteDocument } from "./lib/cascade";
@@ -14,12 +14,13 @@ export const generateUploadUrl = mutation({
   },
 });
 
-/** Enregistre un fichier déjà téléversé via `generateUploadUrl`. */
+/** Enregistre une fiche document, avec le fichier déjà téléversé via `generateUploadUrl` s'il y en a un. */
 export const create = mutation({
   args: {
     project_id: v.id("projects"),
-    storage_id: v.id("_storage"),
-    file_name: v.string(),
+    cat_id: nullable(v.id("project_categories")),
+    storage_id: nullable(v.id("_storage")),
+    file_name: nullable(v.string()),
     name: nullable(v.string()),
     doc_type: nullable(v.string()),
     supplier_id: nullable(v.id("project_suppliers")),
@@ -31,11 +32,15 @@ export const create = mutation({
     await requireUser(ctx);
     must(await ctx.db.get(data.project_id), "Projet");
     if (data.supplier_id) must(await ctx.db.get(data.supplier_id), "Fournisseur");
+    if (data.cat_id) must(await ctx.db.get(data.cat_id), "Catégorie");
+    if (!data.storage_id) {
+      return await ctx.db.insert("project_documents", { ...data, file_size: null, mime_type: null });
+    }
     // Taille et type viennent des métadonnées du stockage, pas du client.
     const file = must(await ctx.db.system.get(data.storage_id), "Fichier");
     if (file.size > MAX_FILE_SIZE) {
       await ctx.storage.delete(data.storage_id);
-      throw new Error("Fichier trop volumineux (20 Mo maximum)");
+      throw new ConvexError("Fichier trop volumineux (20 Mo maximum)");
     }
     return await ctx.db.insert("project_documents", {
       ...data,

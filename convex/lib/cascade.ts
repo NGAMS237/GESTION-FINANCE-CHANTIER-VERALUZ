@@ -33,7 +33,7 @@ export async function deleteCategory(ctx: MutationCtx, categoryId: Id<"project_c
 export async function deleteDocument(ctx: MutationCtx, documentId: Id<"project_documents">) {
   const doc = await ctx.db.get(documentId);
   if (doc === null) return;
-  await ctx.storage.delete(doc.storage_id);
+  if (doc.storage_id) await ctx.storage.delete(doc.storage_id);
   await ctx.db.delete(documentId);
 }
 

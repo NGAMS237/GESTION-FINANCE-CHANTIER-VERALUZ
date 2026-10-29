@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { internalMutation, query } from "./_generated/server";
 import { normalizeEmail, requireUser } from "./lib/access";
 
@@ -17,7 +17,7 @@ export const allowEmail = internalMutation({
   args: { email: v.string() },
   handler: async (ctx, args) => {
     const email = normalizeEmail(args.email);
-    if (!email.includes("@")) throw new Error("Adresse invalide");
+    if (!email.includes("@")) throw new ConvexError("Adresse invalide");
     const existing = await ctx.db
       .query("allowed_emails")
       .withIndex("by_email", (q) => q.eq("email", email))

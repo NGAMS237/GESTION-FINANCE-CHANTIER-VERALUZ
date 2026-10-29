@@ -1,3 +1,4 @@
+import { ConvexError } from "convex/values";
 import { Password } from "@convex-dev/auth/providers/Password";
 import { convexAuth } from "@convex-dev/auth/server";
 import type { MutationCtx } from "./_generated/server";
@@ -11,7 +12,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       },
       validatePasswordRequirements(password) {
         if (password.length < 10) {
-          throw new Error("Le mot de passe doit contenir au moins 10 caractères");
+          throw new ConvexError("Le mot de passe doit contenir au moins 10 caractères");
         }
       },
     }),
@@ -23,7 +24,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       const email = normalizeEmail(profile.email ?? "");
       // Le callback reçoit un contexte non typé ; le schéma est bien celui de l'app.
       if (!(await isEmailAllowed(ctx as unknown as MutationCtx, email))) {
-        throw new Error("Adresse e-mail non autorisée");
+        throw new ConvexError("Adresse e-mail non autorisée");
       }
       return await ctx.db.insert("users", { email });
     },

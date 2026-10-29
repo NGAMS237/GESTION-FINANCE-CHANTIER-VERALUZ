@@ -1,3 +1,4 @@
+import { ConvexError } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import type { DatabaseReader, QueryCtx } from "../_generated/server";
 
@@ -23,10 +24,10 @@ export async function isEmailAllowed(
  */
 export async function requireUser(ctx: QueryCtx) {
   const userId = await getAuthUserId(ctx);
-  if (userId === null) throw new Error("Non authentifié");
+  if (userId === null) throw new ConvexError("Non authentifié");
   const user = await ctx.db.get(userId);
   if (!user?.email || !(await isEmailAllowed(ctx, normalizeEmail(user.email)))) {
-    throw new Error("Accès refusé");
+    throw new ConvexError("Accès refusé");
   }
   return user;
 }

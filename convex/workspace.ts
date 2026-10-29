@@ -69,7 +69,9 @@ export const load = query({
           documents.map(async (d) => ({
             ...toRow(d),
             created_at: d.created_at ?? new Date(d._creationTime).toISOString(),
-            file_url: await ctx.storage.getUrl(d.storage_id),
+            // Le frontend teste `file_path` pour savoir si un fichier est joint.
+            file_path: d.storage_id ?? null,
+            file_url: d.storage_id ? await ctx.storage.getUrl(d.storage_id) : null,
           })),
         )
       ).sort((a, b) => b.created_at.localeCompare(a.created_at)),

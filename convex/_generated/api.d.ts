@@ -11,6 +11,7 @@ import type * as http from "../http.js";
 import type * as lib_access from "../lib/access.js";
 import type * as lib_cascade from "../lib/cascade.js";
 import type * as lib_rows from "../lib/rows.js";
+import type * as migration from "../migration.js";
 import type * as payments from "../payments.js";
 import type * as phases from "../phases.js";
 import type * as projects from "../projects.js";
@@ -27,6 +28,7 @@ declare const fullApi: ApiFromModules<{
   "lib/access": typeof lib_access;
   "lib/cascade": typeof lib_cascade;
   "lib/rows": typeof lib_rows;
+  migration: typeof migration;
   payments: typeof payments;
   phases: typeof phases;
   projects: typeof projects;

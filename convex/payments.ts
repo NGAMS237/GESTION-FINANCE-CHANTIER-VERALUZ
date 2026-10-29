@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation } from "./_generated/server";
 import { requireUser } from "./lib/access";
 import { must, nullable } from "./lib/rows";
@@ -16,7 +16,7 @@ export const create = mutation({
   handler: async (ctx, data) => {
     await requireUser(ctx);
     must(await ctx.db.get(data.quote_id), "Devis");
-    if (!(data.amount > 0)) throw new Error("Le montant doit être positif");
+    if (!(data.amount > 0)) throw new ConvexError("Le montant doit être positif");
     return await ctx.db.insert("project_payments", data);
   },
 });
@@ -26,7 +26,7 @@ export const setAmount = mutation({
   handler: async (ctx, { id, amount }) => {
     await requireUser(ctx);
     must(await ctx.db.get(id), "Versement");
-    if (!(amount > 0)) throw new Error("Le montant doit être positif");
+    if (!(amount > 0)) throw new ConvexError("Le montant doit être positif");
     await ctx.db.patch(id, { amount });
   },
 });
