@@ -28,13 +28,32 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [copied, setCopied] = useState(false);
 
-  const share = async () => {
-    if (navigator.share) {
-      await navigator.share({ title: "Chantier Finance — Résidence Veraluz", url: APP_URL });
-    } else {
-      await navigator.clipboard.writeText(APP_URL);
+  const share = () => {
+    const doCopy = () => {
+      try {
+        navigator.clipboard.writeText(APP_URL).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2500);
+        }).catch(() => legacyCopy());
+      } catch { legacyCopy(); }
+    };
+    const legacyCopy = () => {
+      const el = document.createElement("textarea");
+      el.value = APP_URL;
+      el.style.position = "fixed";
+      el.style.opacity = "0";
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
+    };
+    if (navigator.share) {
+      navigator.share({ title: "Chantier Finance — Résidence Veraluz", url: APP_URL })
+        .catch(() => doCopy());
+    } else {
+      doCopy();
     }
   };
   const projects = useQuery(api.projects.list);
