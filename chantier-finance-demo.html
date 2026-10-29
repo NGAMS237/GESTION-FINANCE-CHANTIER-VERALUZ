@@ -6,7 +6,7 @@
 <title>Chantier Finance — Résidence Veraluz</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/convex@1.48.0/dist/browser.bundle.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -93,6 +93,16 @@ label{display:block;font-size:11px;font-weight:600;color:var(--tx2);margin-botto
 input[type=text],input[type=number],input[type=date],select,textarea{width:100%;padding:7px 10px;border:1px solid var(--bd2);border-radius:var(--r);font-size:12px;color:var(--tx);background:var(--sf);outline:none;transition:border .15s;font-family:inherit}
 input:focus,select:focus,textarea:focus{border-color:var(--in);box-shadow:0 0 0 3px rgba(99,102,241,.12)}
 textarea{resize:vertical;min-height:56px}
+.login{position:fixed;inset:0;background:#1e293b;z-index:2000;display:none;align-items:center;justify-content:center;padding:16px}
+.login.open{display:flex}
+.login-card{background:var(--sf);border-radius:var(--r2);padding:28px 24px;width:100%;max-width:360px;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.login-card h1{font-size:17px;margin-bottom:4px}
+.login-card p{color:var(--tx2);font-size:12px;margin-bottom:18px}
+.login-card input{width:100%;padding:9px 11px;border:1px solid var(--bd2);border-radius:var(--r);font-size:13px;margin-bottom:10px;font-family:inherit}
+.login-card .btn{width:100%;justify-content:center;padding:9px}
+.login-err{color:var(--rd);font-size:12px;min-height:16px;margin:2px 0 8px}
+.login-sw{margin-top:12px;text-align:center;font-size:12px;color:var(--tx2)}
+.login-sw a{color:var(--in);cursor:pointer}
 .mo{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:1000;align-items:center;justify-content:center}
 .mo.open{display:flex}
 .md{background:var(--sf);border-radius:var(--r2);padding:24px;width:500px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)}
@@ -369,6 +379,17 @@ textarea{resize:vertical;min-height:56px}
 </style>
 </head>
 <body>
+<div class="login" id="loginScreen">
+  <form class="login-card" id="loginForm" autocomplete="on">
+    <h1><i class="ti ti-building-skyscraper" style="color:var(--in)"></i> Finance Chantier Veraluz</h1>
+    <p id="loginSub">Connectez-vous pour accéder aux données du chantier.</p>
+    <input type="email" id="loginEmail" placeholder="Adresse e-mail" autocomplete="email" required>
+    <input type="password" id="loginPw" placeholder="Mot de passe" autocomplete="current-password" required minlength="10">
+    <div class="login-err" id="loginErr"></div>
+    <button class="btn btn-p" type="submit" id="loginBtn">Se connecter</button>
+    <div class="login-sw"><span id="loginSwTxt">Première connexion ?</span> <a id="loginSw">Créer mon mot de passe</a></div>
+  </form>
+</div>
 <div class="toasts" id="toasts"></div>
 <div class="app">
 
@@ -417,7 +438,7 @@ textarea{resize:vertical;min-height:56px}
       <span class="pgtt" id="pgTitle">Tableau de bord</span>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
-      <div class="dbs"><span class="dbd" id="dbDot"></span><span id="dbLbl">Supabase…</span></div>
+      <div class="dbs"><span class="dbd" id="dbDot"></span><span id="dbLbl">Convex…</span><button class="btn btn-sm btn-ic" id="bLogout" title="Se déconnecter" onclick="signOut()" style="margin-left:auto"><i class="ti ti-logout"></i></button></div>
       <div class="av" id="avInitials">VZ</div>
     </div>
   </div>
@@ -692,10 +713,9 @@ textarea{resize:vertical;min-height:56px}
       <div class="fg" style="margin-top:12px"><label>Budget total (FCFA)</label><input type="number" id="paramBudget" step="50000"></div>
       <button class="btn btn-p btn-sm" onclick="saveBudget()"><i class="ti ti-device-floppy"></i>Sauvegarder le budget</button>
     </div>
-    <div class="card" style="border-color:#fca5a5;background:#fff5f5">
-      <div class="ctt"><i class="ti ti-shield-exclamation" style="color:var(--rd)"></i>Avertissement sécurité Supabase</div>
-      <p style="font-size:12px;color:var(--rdd);line-height:1.7">15 tables <strong>sans RLS</strong> : <code style="font-size:10px">veraluz_teams, veraluz_employees, veraluz_contracts, veraluz_payroll</code> et 11 autres. Activer RLS + politiques avant mise en production.</p>
-      <a href="https://supabase.com/docs/guides/database/postgres/row-level-security" target="_blank" style="font-size:11px;color:var(--in);text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-top:10px"><i class="ti ti-external-link"></i>Documentation RLS</a>
+    <div class="card">
+      <div class="ctt"><i class="ti ti-shield-check" style="color:var(--gn)"></i>Sécurité des données</div>
+      <p style="font-size:12px;color:var(--tx2);line-height:1.7">Les données et les documents sont hébergés sur Convex. Chaque lecture et chaque modification vérifient que vous êtes connecté avec une adresse autorisée.</p>
     </div>
   </div>
 </div>
@@ -929,11 +949,105 @@ textarea{resize:vertical;min-height:56px}
 
 
 <script>
-// ══ Supabase ══════════════════════════════════════
-const sb = supabase.createClient(
-  'https://dfdmasejsoibxrvubegu.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRmZG1hc2Vqc29pYnhydnViZWd1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MDgzOTMsImV4cCI6MjA5MjI4NDM5M30.dEsafV84HFmFqU6Yi4xKydIbUlkIVE7QMRMpFt8kqXY'
-);
+// ══ Convex ════════════════════════════════════════
+// URL publique du déploiement (Convex > Settings > URL & Deploy Key). Ce n'est pas un secret.
+const CONVEX_URL = 'https://REMPLACER-PAR-VOTRE-DEPLOIEMENT.convex.cloud';
+const api = convex.anyApi;
+const cx = new convex.ConvexClient(CONVEX_URL);
+// Client sans session pour la connexion et le renouvellement du jeton.
+const cxAuth = new convex.ConvexHttpClient(CONVEX_URL);
+
+const TOKEN_KEY = 'vlz_cx_token', REFRESH_KEY = 'vlz_cx_refresh';
+function lsGet(k){ try { return localStorage.getItem(k); } catch(e) { return null; } }
+function lsSet(k,v){ try { v===null ? localStorage.removeItem(k) : localStorage.setItem(k,v); } catch(e) {} }
+function storeTokens(t){ lsSet(TOKEN_KEY, t ? t.token : null); lsSet(REFRESH_KEY, t ? t.refreshToken : null); }
+
+// Message lisible : ConvexError porte le texte dans `data`.
+function cxMsg(e){ return (e && typeof e.data === 'string') ? e.data : (e && e.message) || String(e); }
+
+/** Appelle une mutation et renvoie {data, error} : les appelants testent `error`. */
+async function dbm(fn, args){
+  try { return { data: await cx.mutation(fn, args), error: null }; }
+  catch(e) { return { data: null, error: { message: cxMsg(e) } }; }
+}
+
+async function refreshTokens(){
+  const refreshToken = lsGet(REFRESH_KEY);
+  if(!refreshToken) return null;
+  try {
+    const r = await cxAuth.action(api.auth.signIn, { refreshToken });
+    storeTokens(r.tokens || null);
+    return r.tokens ? r.tokens.token : null;
+  } catch(e) { storeTokens(null); return null; }
+}
+
+let authStarted = false;
+function startSession(){
+  authStarted = false;
+  cx.setAuth(
+    async ({ forceRefreshToken }) => forceRefreshToken ? await refreshTokens() : (lsGet(TOKEN_KEY) || await refreshTokens()),
+    async (isAuth) => {
+      if(!isAuth){ showLogin('Session expirée, reconnectez-vous.'); return; }
+      if(authStarted) return;
+      authStarted = true;
+      hideLogin();
+      await loadAll();
+      subscribeWorkspace();
+      navTo('dash');
+    }
+  );
+}
+
+let loginFlow = 'signIn';
+function showLogin(msg){
+  unsubscribeWorkspace();
+  document.getElementById('loginErr').textContent = msg || '';
+  document.getElementById('loginScreen').classList.add('open');
+}
+function hideLogin(){ document.getElementById('loginScreen').classList.remove('open'); }
+function setLoginFlow(flow){
+  loginFlow = flow;
+  const up = flow === 'signUp';
+  document.getElementById('loginBtn').textContent = up ? 'Créer mon mot de passe' : 'Se connecter';
+  document.getElementById('loginSub').textContent = up
+    ? 'Votre adresse doit avoir été autorisée. Mot de passe : 10 caractères minimum.'
+    : 'Connectez-vous pour accéder aux données du chantier.';
+  document.getElementById('loginSwTxt').textContent = up ? 'Déjà un compte ?' : 'Première connexion ?';
+  document.getElementById('loginSw').textContent = up ? 'Se connecter' : 'Créer mon mot de passe';
+  document.getElementById('loginPw').autocomplete = up ? 'new-password' : 'current-password';
+  document.getElementById('loginErr').textContent = '';
+}
+document.getElementById('loginSw').addEventListener('click', () => setLoginFlow(loginFlow === 'signIn' ? 'signUp' : 'signIn'));
+document.getElementById('loginForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPw').value;
+  const btn = document.getElementById('loginBtn'); btn.disabled = true;
+  document.getElementById('loginErr').textContent = '';
+  try {
+    const r = await cxAuth.action(api.auth.signIn, { provider: 'password', params: { email, password, flow: loginFlow } });
+    if(!r.tokens) throw new Error('Connexion refusée');
+    storeTokens(r.tokens);
+    document.getElementById('loginPw').value = '';
+    startSession();
+  } catch(e) {
+    const m = cxMsg(e);
+    document.getElementById('loginErr').textContent =
+      // En production, Convex Auth masque la cause d'un échec de connexion derrière « Server Error ».
+      /InvalidSecret|InvalidAccountId|Invalid credentials/i.test(m) || (loginFlow === 'signIn' && /Server Error/i.test(m)) ? 'E-mail ou mot de passe incorrect'
+      : /already exists/i.test(m) ? 'Ce compte existe déjà : utilisez « Se connecter »'
+      : m;
+  } finally { btn.disabled = false; }
+});
+
+async function signOut(){
+  const token = lsGet(TOKEN_KEY);
+  if(token){ try { cxAuth.setAuth(token); await cxAuth.action(api.auth.signOut, {}); } catch(e) {} cxAuth.clearAuth(); }
+  storeTokens(null);
+  cx.clearAuth();
+  authStarted = false;
+  showLogin('');
+}
 
 // ══ State ════════════════════════════════════════
 const COLORS = ['#6366f1','#f59e0b','#10b981','#ef4444','#3b82f6','#ec4899','#8b5cf6','#14b8a6','#f97316','#64748b'];
@@ -1024,41 +1138,49 @@ function allPaymentsFlat() {
 // ══ DB status ════════════════════════════════════
 function setDb(s) {
   document.getElementById('dbDot').className = 'dbd'+(s==='ok'?' ok':s==='err'?' err':'');
-  document.getElementById('dbLbl').textContent = s==='ok'?'Connecté · Supabase':s==='err'?'Erreur Supabase':'Connexion…';
+  document.getElementById('dbLbl').textContent = s==='ok'?'Connecté · Convex':s==='err'?'Erreur Convex':'Connexion…';
 }
 
 // ══ Load data ════════════════════════════════════
+function applyWorkspace(ws) {
+  projects = ws.projects;
+  activeProject = projects.find(p => p.id === ws.activeProjectId) || null;
+  categories = ws.categories;
+  suppliers = ws.suppliers;
+  documents = ws.documents;
+  document.getElementById('projBadge').textContent = projects.length;
+  setDb('ok');
+  if(activeProject) updateSidebar();
+  renderAll();
+}
+
 async function loadAll() {
   setDb('');
   try {
-    const {data:prjs, error:e1} = await sb.from('projects').select('*').order('position').order('name');
-    if(e1) throw e1;
-    projects = prjs || [];
-    document.getElementById('projBadge').textContent = projects.length;
-
-    if(!activeProject && projects.length>0) activeProject = projects[0];
-    if(!activeProject) { setDb('ok'); renderAll(); return; }
-
-    const {data:cats, error:e2} = await sb.from('project_categories').select(`
-      *, project_phases(*, project_quotes(*, project_payments(*)))
-    `).eq('project_id', activeProject.id).order('position');
-    if(e2) throw e2;
-    categories = cats || [];
-
-    const {data:supps, error:e3} = await sb.from('project_suppliers').select('*').eq('project_id', activeProject.id);
-    if(e3) throw e3;
-    suppliers = supps || [];
-    const {data:docs, error:e4} = await sb.from('project_documents').select('*').eq('project_id', activeProject.id).order('created_at', {ascending:false});
-    if(e4) throw e4;
-    documents = docs || [];
-
-    setDb('ok');
-    updateSidebar();
-    renderAll();
+    applyWorkspace(await cx.query(api.workspace.load, activeProject ? { projectId: activeProject.id } : {}));
   } catch(e) {
     setDb('err');
-    toast('Erreur Supabase: '+e.message, 'er');
+    toast('Erreur Convex: '+cxMsg(e), 'er');
   }
+}
+
+// Mise à jour en direct quand un autre utilisateur modifie les données.
+// Ignorée pendant la saisie d'un montant en ligne pour ne pas effacer le champ.
+let wsUnsub = null, wsSubProject;
+function subscribeWorkspace() {
+  const projectId = activeProject ? activeProject.id : undefined;
+  if(wsUnsub && wsSubProject === projectId) return;
+  unsubscribeWorkspace();
+  wsSubProject = projectId;
+  wsUnsub = cx.onUpdate(api.workspace.load, projectId ? { projectId } : {}, (ws) => {
+    const a = document.activeElement;
+    if(a && a.id && /^p?amt-i-/.test(a.id)) return;
+    if(ws.activeProjectId !== (activeProject ? activeProject.id : null) && activeProject) return;
+    applyWorkspace(ws);
+  }, () => setDb('err'));
+}
+function unsubscribeWorkspace() {
+  if(wsUnsub) { wsUnsub(); wsUnsub = null; }
 }
 
 function updateSidebar() {
@@ -1293,7 +1415,7 @@ function initCharts(cats) {
 }
 // ══ PROJETS ══════════════════════════════════════
 function renderProjets() {
-  document.getElementById('projSubtitle').textContent = projects.length+' projet(s) dans Supabase';
+  document.getElementById('projSubtitle').textContent = projects.length+' projet(s)';
   document.getElementById('projList').innerHTML = projects.length ? projects.map(p => {
     const isActive = activeProject && p.id === activeProject.id;
     const nm = esc(p.name);
@@ -1310,7 +1432,7 @@ function renderProjets() {
 }
 function setActiveProj(id) {
   activeProject = projects.find(p=>p.id===id);
-  loadAll();
+  loadAll().then(subscribeWorkspace);
 }
 
 // ══ CATÉGORIES ═══════════════════════════════════
@@ -1841,7 +1963,7 @@ async function saveAmt(qId){
   const newAmt=Math.round(Number(inp.value)||0);
   if(newAmt<0){toast('Le montant doit être positif.','er');return;}
   try{
-    const {error}=await sb.from('project_quotes').update({amount:newAmt}).eq('id',qId);
+    const {error}=await dbm(api.quotes.setAmount,{id:qId,amount:newAmt});
     if(error)throw error;
     toast('Montant mis à jour : '+fmtN(newAmt)+' FCFA');
     await loadAll();
@@ -2107,7 +2229,7 @@ async function savePayAmt(pId){
   const newAmt=Math.round(Number(inp.value)||0);
   if(newAmt<=0){toast('Le montant doit être supérieur à 0.','er');return;}
   try{
-    const {error}=await sb.from('project_payments').update({amount:newAmt}).eq('id',pId);
+    const {error}=await dbm(api.payments.setAmount,{id:pId,amount:newAmt});
     if(error)throw error;
     toast('Versement mis à jour : '+fmtN(newAmt)+' FCFA');
     await loadAll();
@@ -2185,11 +2307,8 @@ function docTypeLabel(t) {
 function isImage(mime) { return mime && mime.startsWith('image/'); }
 function isPdf(mime)   { return mime === 'application/pdf'; }
 
-function getDocUrl(filePath) {
-  if(!filePath) return null;
-  const {data} = sb.storage.from('chantier-docs').getPublicUrl(filePath);
-  return data?.publicUrl || null;
-}
+// URL de téléchargement fournie par Convex, servie seulement aux utilisateurs connectés.
+function getDocUrl(d) { return (d && d.file_url) || null; }
 
 function renderDocuments() {
   if(!activeProject){document.getElementById('docContainer').innerHTML='<div class="empty"><i class="ti ti-briefcase"></i><p>Sélectionnez un projet</p></div>';return;}
@@ -2229,7 +2348,7 @@ function renderDocuments() {
     const cards = docs.map(d => {
       const cat  = catMap[d.cat_id];
       const supp = suppMap[d.supplier_id];
-      const url  = getDocUrl(d.file_path);
+      const url  = getDocUrl(d);
       let thumbHtml = '';
       if(url && isImage(d.mime_type)) {
         thumbHtml = `<img src="${url}" alt="${esc(d.name)}" loading="lazy">`;
@@ -2270,7 +2389,7 @@ function renderDocuments() {
     const rows = docs.map(d => {
       const cat  = catMap[d.cat_id];
       const supp = suppMap[d.supplier_id];
-      const url  = getDocUrl(d.file_path);
+      const url  = getDocUrl(d);
       const sizeStr = d.file_size ? (d.file_size>1048576?(d.file_size/1048576).toFixed(1)+' Mo':(d.file_size/1024).toFixed(0)+' Ko') : '—';
       return `<tr>
         <td>
@@ -2310,7 +2429,7 @@ function renderDocuments() {
 function previewDoc(docId) {
   const d = documents.find(x=>x.id===docId);
   if(!d || !d.file_path) { toast('Aucun fichier lié à ce document','er'); return; }
-  const url = getDocUrl(d.file_path);
+  const url = getDocUrl(d);
   if(!url) { toast('URL introuvable','er'); return; }
   const pv = document.getElementById('docPreview');
   const pvName = document.getElementById('docPreviewName');
@@ -2360,19 +2479,10 @@ async function saveDoc() {
   btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader ti-spin"></i>Enregistrement…';
 
   try {
-    let filePath = null, fileName = null, fileSize = null, mimeType = null;
+    let storageId = null, fileName = null;
 
     if(docSelectedFile) {
-      // Build storage path: project_id/cat-slug/timestamp_filename
-      const catId  = document.getElementById('dCat').value;
-      const cat    = categories.find(c=>c.id===catId);
-      const slug   = cat ? cat.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-') : 'general';
-      const ts     = Date.now();
-      const safeName = docSelectedFile.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-      filePath = `${activeProject.id}/${slug}/${ts}_${safeName}`;
       fileName = docSelectedFile.name;
-      fileSize = docSelectedFile.size;
-      mimeType = docSelectedFile.type;
 
       // Show progress
       const prog = document.getElementById('dUploadProgress');
@@ -2382,10 +2492,7 @@ async function saveDoc() {
       bar.style.width = '30%';
       lbl.textContent = 'Upload en cours…';
 
-      const {error:upErr} = await sb.storage.from('chantier-docs').upload(filePath, docSelectedFile, {
-        cacheControl:'3600', upsert:false, contentType:mimeType
-      });
-      if(upErr) throw new Error('Upload Storage : '+upErr.message);
+      storageId = await uploadFile(docSelectedFile);
       bar.style.width = '80%';
     }
 
@@ -2398,13 +2505,11 @@ async function saveDoc() {
       doc_date    : document.getElementById('dDt').value || null,
       amount      : document.getElementById('dAmt').value ? Number(document.getElementById('dAmt').value) : null,
       description : document.getElementById('dDesc').value.trim() || null,
-      file_path   : filePath,
+      storage_id  : storageId,
       file_name   : fileName,
-      file_size   : fileSize,
-      mime_type   : mimeType,
     };
 
-    const {error:dbErr} = await sb.from('project_documents').insert(payload);
+    const {error:dbErr} = await dbm(api.documents.create, payload);
     if(dbErr) throw dbErr;
 
     document.getElementById('dUploadProgress') && (document.getElementById('dProgressBar').style.width='100%');
@@ -2423,17 +2528,23 @@ async function saveDoc() {
 async function delDoc(docId, filePath, docName) {
   confirmDel('document', docName, async () => {
     try {
-      if(filePath) {
-        const {error:stErr} = await sb.storage.from('chantier-docs').remove([filePath]);
-        if(stErr) console.warn('Storage delete warning:', stErr.message);
-      }
-      const {error:dbErr} = await sb.from('project_documents').delete().eq('id', docId);
+      // Le fichier stocké est supprimé avec la fiche, côté serveur.
+      const {error:dbErr} = await dbm(api.documents.remove, {id: docId});
       if(dbErr) throw dbErr;
       toast('Document supprimé');
       await loadAll();
       renderDocuments();
     } catch(e) { toast('Erreur suppression : '+e.message,'er'); }
   });
+}
+
+/** Téléverse un fichier dans Convex Storage et renvoie son storageId. */
+async function uploadFile(file) {
+  const {data:uploadUrl, error} = await dbm(api.documents.generateUploadUrl, {});
+  if(error) throw new Error('Upload : '+error.message);
+  const res = await fetch(uploadUrl, {method:'POST', headers:{'Content-Type': file.type || 'application/octet-stream'}, body:file});
+  if(!res.ok) throw new Error('Upload : HTTP '+res.status);
+  return (await res.json()).storageId;
 }
 
 // ══ RAPPORTS ══════════════════════════════════════
@@ -3021,7 +3132,7 @@ function renderParametres() {
 async function saveBudget() {
   if(!activeProject) return;
   const v = Number(document.getElementById('paramBudget').value)||0;
-  const {error} = await sb.from('projects').update({budget:v}).eq('id',activeProject.id);
+  const {error} = await dbm(api.projects.setBudget,{id:activeProject.id,budget:v});
   if(error){toast('Erreur: '+error.message,'er');return;}
   activeProject.budget = v;
   toast('Budget mis à jour : '+fmtN(v)+' FCFA');
@@ -3069,8 +3180,8 @@ async function saveProj() {
   const btn=document.getElementById('bSvProj');btn.disabled=true;
   try {
     let err;
-    if(editProjId){({error:err}=await sb.from('projects').update(data).eq('id',editProjId));}
-    else{({error:err}=await sb.from('projects').insert({...data,position:projects.length+1}));}
+    if(editProjId){({error:err}=await dbm(api.projects.update,{id:editProjId,...data}));}
+    else{({error:err}=await dbm(api.projects.create,data));}
     if(err) throw err;
     toast(editProjId?'Projet mis à jour':'Projet créé ✓');
     closeModal('mProj');editProjId=null;
@@ -3080,7 +3191,7 @@ async function saveProj() {
 }
 
 async function delProj(id) {
-  const {error}=await sb.from('projects').delete().eq('id',id);
+  const {error}=await dbm(api.projects.remove,{id});
   if(error){toast('Erreur: '+error.message,'er');return;}
   if(activeProject?.id===id) activeProject=null;
   toast('Projet supprimé');closeModal('mConf');await loadAll();
@@ -3107,8 +3218,8 @@ async function saveCat() {
   const btn=document.getElementById('bSvCat');btn.disabled=true;
   try {
     let err;
-    if(editCatId){({error:err}=await sb.from('project_categories').update(data).eq('id',editCatId));}
-    else{({error:err}=await sb.from('project_categories').insert({...data,position:categories.length+1}));}
+    if(editCatId){({error:err}=await dbm(api.categories.update,{id:editCatId,name:data.name,description:data.description,color:data.color}));}
+    else{({error:err}=await dbm(api.categories.create,data));}
     if(err) throw err;
     toast(editCatId?'Catégorie mise à jour':'Catégorie créée ✓');
     closeModal('mCat');editCatId=null;await loadAll();
@@ -3117,7 +3228,7 @@ async function saveCat() {
 }
 
 async function delCat(id) {
-  const {error}=await sb.from('project_categories').delete().eq('id',id);
+  const {error}=await dbm(api.categories.remove,{id});
   if(error){toast('Erreur: '+error.message,'er');return;}
   toast('Catégorie supprimée');closeModal('mConf');await loadAll();
 }
@@ -3151,8 +3262,8 @@ async function savePhase() {
   const btn=document.getElementById('bSvPhase');btn.disabled=true;
   try {
     let err;
-    if(editPhaseId){({error:err}=await sb.from('project_phases').update(data).eq('id',editPhaseId));}
-    else{const cat=categories.find(c=>c.id===catId);const pos=(cat?.project_phases||[]).length+1;({error:err}=await sb.from('project_phases').insert({...data,position:pos}));}
+    if(editPhaseId){({error:err}=await dbm(api.phases.update,{id:editPhaseId,...data}));}
+    else{({error:err}=await dbm(api.phases.create,data));}
     if(err) throw err;
     toast(editPhaseId?'Phase mise à jour':'Phase créée ✓');
     closeModal('mPhase');editPhaseId=null;await loadAll();
@@ -3161,7 +3272,7 @@ async function savePhase() {
 }
 
 async function delPhase(id) {
-  const {error}=await sb.from('project_phases').delete().eq('id',id);
+  const {error}=await dbm(api.phases.remove,{id});
   if(error){toast('Erreur: '+error.message,'er');return;}
   toast('Phase supprimée');closeModal('mConf');await loadAll();
 }
@@ -3249,27 +3360,20 @@ async function saveQuote() {
     let err;
     const wasEdit=!!editQuoteId;
     const savedId=editQuoteId;
-    if(editQuoteId){({error:err}=await sb.from('project_quotes').update(data).eq('id',editQuoteId));}
-    else{
-      let newQ;
-      ({data:newQ,error:err}=await sb.from('project_quotes').insert(data).select().single());
-    }
-    if(err) throw err;
-    // Enregistrer un versement si demandé
-    let payMsg='';
+    // Versement saisi depuis la fiche du devis : enregistré dans la même transaction que le devis.
+    let payment=null;
     if(wasEdit && document.getElementById('qAddPay') && document.getElementById('qAddPay').checked) {
       const pAmt=Number(document.getElementById('qpAmt').value);
       const pDt=document.getElementById('qpDt').value;
-      if(pAmt>0 && pDt) {
-        const payData={quote_id:savedId, date:pDt, amount:pAmt,
+      if(pAmt>0 && pDt) payment={date:pDt, amount:pAmt,
           method:document.getElementById('qpMeth').value,
           reference:document.getElementById('qpRef').value||null,
-          notes:document.getElementById('qpNote').value||null};
-        const {error:payErr}=await sb.from('project_payments').insert(payData);
-        if(payErr) payMsg=' (⚠ versement non enregistré: '+payErr.message+')';
-        else payMsg=' + versement enregistré ✓';
-      }
+          note:document.getElementById('qpNote').value||null};
     }
+    if(editQuoteId){({error:err}=await dbm(api.quotes.update,{id:editQuoteId,...data,...(payment?{payment}:{})}));}
+    else{({error:err}=await dbm(api.quotes.create,data));}
+    if(err) throw err;
+    const payMsg=payment?' + versement enregistré ✓':'';
     toast(wasEdit?'Devis mis à jour'+payMsg:'Devis créé ✓');
     closeModal('mQuote');editQuoteId=null;await loadAll();
     navTo('devis');
@@ -3278,7 +3382,7 @@ async function saveQuote() {
 }
 
 async function delQuote(id) {
-  const {error}=await sb.from('project_quotes').delete().eq('id',id);
+  const {error}=await dbm(api.quotes.remove,{id});
   if(error){toast('Erreur: '+error.message,'er');return;}
   toast('Devis supprimé');closeModal('mConf');await loadAll();
 }
@@ -3315,7 +3419,7 @@ async function savePay() {
     note:document.getElementById('pyNote').value||null};
   const btn=document.getElementById('bSvPay');btn.disabled=true;
   try {
-    const {error}=await sb.from('project_payments').insert(data);
+    const {error}=await dbm(api.payments.create,data);
     if(error) throw error;
     toast('Paiement enregistré : '+fmtN(amt)+' FCFA ✓');
     closeModal('mPay');await loadAll();
@@ -3326,7 +3430,7 @@ async function savePay() {
 
 async function delPay(id, quoteId) {
   confirmDel('paiement','ce paiement',async()=>{
-    const {error}=await sb.from('project_payments').delete().eq('id',id);
+    const {error}=await dbm(api.payments.remove,{id});
     if(error){toast('Erreur: '+error.message,'er');return;}
     toast('Paiement supprimé');closeModal('mConf');await loadAll();
   });
@@ -3353,8 +3457,8 @@ async function saveSupp() {
   const btn=document.getElementById('bSvSupp');btn.disabled=true;
   try {
     let err;
-    if(editSuppId){({error:err}=await sb.from('project_suppliers').update(data).eq('id',editSuppId));}
-    else{({error:err}=await sb.from('project_suppliers').insert(data));}
+    if(editSuppId){const {project_id, ...fields}=data;({error:err}=await dbm(api.suppliers.update,{id:editSuppId,...fields}));}
+    else{({error:err}=await dbm(api.suppliers.create,data));}
     if(err) throw err;
     toast(editSuppId?'Fournisseur mis à jour':'Fournisseur créé ✓');
     closeModal('mSupp');editSuppId=null;await loadAll();
@@ -3363,7 +3467,7 @@ async function saveSupp() {
 }
 
 async function delSupp(id) {
-  const {error}=await sb.from('project_suppliers').delete().eq('id',id);
+  const {error}=await dbm(api.suppliers.remove,{id});
   if(error){toast('Erreur: '+error.message,'er');return;}
   toast('Fournisseur supprimé');closeModal('mConf');await loadAll();
 }
@@ -3469,7 +3573,7 @@ function initModalOpen(mid) {
   };
 })();
 // ══ Initialisation ═══════════════════════════════
-loadAll().then(() => { navTo('dash'); });
+if(lsGet(REFRESH_KEY)) startSession(); else showLogin('');
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SYSTÈME OCR — ANALYSE PDF DES DEVIS
@@ -3815,45 +3919,39 @@ async function ocrApplyToForm() {
   if(!suppId && getV('company')) {
     // Auto-create supplier from OCR data
     toast('Création du fournisseur…');
-    const {data:newSupp, error:suppErr} = await sb.from('project_suppliers').insert({
+    const suppData = {
       project_id: activeProject.id,
       name: getV('company'),
       phone: getV('phone')||null,
       email: getV('email')||null,
-    }).select().single();
+    };
+    const {data:newSuppId, error:suppErr} = await dbm(api.suppliers.create, suppData);
     if(suppErr){ toast('Erreur création fournisseur: '+suppErr.message,'er'); return; }
+    const newSupp = {...suppData, id:newSuppId};
     finalSuppId = newSupp.id;
     suppliers.push(newSupp);
     toast('Fournisseur "'+newSupp.name+'" créé ✓');
   }
 
-  // Upload PDF to Supabase Storage
+  // Conserver le PDF original dans les documents
   let pdfDocId = null;
   if(ocrFile && activeProject) {
     toast('Upload du PDF en cours…');
     try {
-      const ts = Date.now();
-      const safeName = ocrFile.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-      const path = activeProject.id+'/devis-ocr/'+ts+'_'+safeName;
-      const {error:upErr} = await sb.storage.from('chantier-docs').upload(path, ocrFile, {contentType:'application/pdf', upsert:false});
-      if(!upErr) {
-        const {data:{publicUrl}} = sb.storage.from('chantier-docs').getPublicUrl(path);
-        // Register in project_documents
-        const {data:docRow} = await sb.from('project_documents').insert({
-          project_id: activeProject.id,
-          file_name: ocrFile.name,
-          file_path: path,
-          file_url: publicUrl,
-          file_size: ocrFile.size,
-          mime_type: 'application/pdf',
-          doc_type: 'devis',
-          description: 'Devis PDF importé via OCR',
-        }).select().single();
-        pdfDocId = docRow?.id;
-        documents.unshift(docRow);
-        toast('PDF uploadé dans Supabase Storage ✓');
+      const storageId = await uploadFile(ocrFile);
+      const {data:docId, error:docErr} = await dbm(api.documents.create, {
+        project_id: activeProject.id,
+        storage_id: storageId,
+        file_name: ocrFile.name,
+        name: ocrFile.name,
+        doc_type: 'devis',
+        description: 'Devis PDF importé via OCR',
+      });
+      if(docErr) {
+        toast('Upload PDF (non bloquant): '+docErr.message,'er');
       } else {
-        toast('Upload PDF (non bloquant): '+upErr.message,'er');
+        pdfDocId = docId;
+        toast('PDF conservé dans les documents ✓');
       }
     } catch(e){ toast('Upload PDF ignoré: '+e.message); }
   }

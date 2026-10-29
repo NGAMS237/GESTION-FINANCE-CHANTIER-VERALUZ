@@ -1,0 +1,23 @@
+{
+  "name": "gestion-finance-chantier-veraluz",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p convex",
+    "test": "vitest run",
+    "validate": "npm run typecheck && npm test"
+  },
+  "devDependencies": {
+    "@edge-runtime/vm": "5.0.0",
+    "@types/node": "22.20.5",
+    "convex-test": "0.0.66",
+    "jose": "6.2.14",
+    "typescript": "7.0.2",
+    "vitest": "5.0.5"
+  },
+  "dependencies": {
+    "@auth/core": "0.41.3",
+    "@convex-dev/auth": "0.0.96",
+    "convex": "1.48.0"
+  }
+}
