@@ -107,7 +107,7 @@ export default function Dashboard({ project }: Props) {
       {/* ── KPI row ── */}
       <div style={{ display:"grid", gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(4,1fr)", gap:12, marginBottom:20 }}>
         <Kpi icon="ti-files"     color="#6366f1" label="Devis engagés"  value={`${fmtN(totalEngaged)} ${project.currency}`} sub={`${quotes.length} devis`} />
-        <Kpi icon="ti-cash"      color="#10b981" label="Versé"          value={`${fmtN(totalVerse)} ${project.currency}`}   sub={`${avancement}% du budget`} />
+        <Kpi icon="ti-cash"      color={avancement > 100 ? "#ef4444" : "#10b981"} label="Versé" value={`${fmtN(totalVerse)} ${project.currency}`} sub={avancement > 100 ? `⚠ ${avancement}% du budget` : `${avancement}% du budget`} />
         <Kpi icon="ti-clock"     color="#f59e0b" label="Reste à payer"  value={`${fmtN(totalReste)} ${project.currency}`}   sub="devis − versements" />
         <Kpi icon="ti-chart-bar" color="#3b82f6" label="Budget total"   value={`${fmtN(project.budget)} ${project.currency}`} sub={`Alloué : ${budgetUsePct}%`} />
       </div>
@@ -191,15 +191,22 @@ export default function Dashboard({ project }: Props) {
         </Card>
 
         <Card title="Avancement global" icon="ti-progress">
-          <div style={{ fontSize:36, fontWeight:700, color:"#6366f1", lineHeight:1, marginBottom:6 }}>{avancement}%</div>
+          <div style={{ display:"flex", alignItems:"baseline", gap:10, marginBottom:6 }}>
+            <div style={{ fontSize:36, fontWeight:700, color: avancement > 100 ? "#ef4444" : "#6366f1", lineHeight:1 }}>{avancement}%</div>
+            {avancement > 100 && (
+              <div style={{ background:"#ef444422", color:"#ef4444", border:"1px solid #ef444444", borderRadius:6, fontSize:11, fontWeight:600, padding:"2px 8px" }}>
+                Budget dépassé
+              </div>
+            )}
+          </div>
           <div style={{ fontSize:12, color:"#64748b", marginBottom:14 }}>
             {fmtN(totalVerse)} / {fmtN(project.budget)} FCFA versé
           </div>
           <div style={{ background:"#0f172a", borderRadius:6, height:10, overflow:"hidden", marginBottom:6 }}>
-            <div style={{ height:"100%", width:`${avancement}%`, background:"#6366f1", borderRadius:6, transition:"width 0.6s" }}/>
+            <div style={{ height:"100%", width:"100%", background: avancement > 100 ? "#ef4444" : "#6366f1", borderRadius:6 }}/>
           </div>
           <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#475569" }}>
-            <span>0%</span><span>50%</span><span>100%</span>
+            <span>0%</span><span>Budget : {fmtN(project.budget)} FCFA</span><span>{avancement}%</span>
           </div>
         </Card>
       </div>
