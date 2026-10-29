@@ -18,6 +18,7 @@ export const STATUS_LABELS: Record<string, string> = {
   paid: "Soldé",
   in_progress: "En cours",
   completed: "Terminé",
+  prevu: "Prévu",
 };
 
 export const STATUS_COLORS: Record<string, string> = {
@@ -27,6 +28,7 @@ export const STATUS_COLORS: Record<string, string> = {
   paid: "#10b981",
   in_progress: "#f97316",
   completed: "#10b981",
+  prevu: "#8b5cf6",
 };
 
 export const METHOD_LABELS: Record<string, string> = {

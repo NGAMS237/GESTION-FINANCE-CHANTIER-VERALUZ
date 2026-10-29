@@ -5,163 +5,276 @@ import { Id } from "../../convex/_generated/dataModel";
 import { fmtN, fmtDate, STATUS_LABELS, STATUS_COLORS } from "../lib/utils";
 
 interface Props { projectId: Id<"projects"> }
-const STATUS_OPTS = ["pending","approved","in_progress","completed","cancelled"];
-const METHOD_OPTS = ["virement","especes","cheque","mobile_money","autre"];
-const CURRENCY_OPTS = ["FCFA","EUR","USD","CAD"];
 
-const EMPTY_QUOTE = { phase_id:"" as Id<"phases">, supplier_id:"" as Id<"suppliers">|"", number:"", description:"", date:"", amount:"", currency:"FCFA", status:"pending", notes:"" };
+const CURRENCY_OPTS = ["FCFA","EUR","USD","CAD"];
+const STATUS_OPTS   = ["prevu","pending","approved","partial","paid"];
+
+// Quote statuses avec styles
+const STATUS_META: Record<string,{label:string; color:string; dashed?:boolean}> = {
+  prevu:    { label:"Prévu",       color:"#8b5cf6", dashed:true },
+  pending:  { label:"En attente",  color:"#f59e0b" },
+  approved: { label:"Approuvé",    color:"#3b82f6" },
+  partial:  { label:"Partiel",     color:"#f97316" },
+  paid:     { label:"Soldé",       color:"#10b981" },
+};
+
+const EMPTY: Record<string,any> = { phase_id:"", supplier_id:"", number:"", description:"", date:"", amount:"", currency:"FCFA", status:"pending", notes:"" };
+const EMPTY_PHASE = { category_id:"", name:"", status:"planned" };
 
 export default function QuotesPage({ projectId }: Props) {
-  const quotes = useQuery(api.quotes.listAll);
-  const payments = useQuery(api.payments.listAll);
-  const suppliers = useQuery(api.suppliers.listByProject, { project_id: projectId });
+  const quotes     = useQuery(api.quotes.listAll);
+  const payments   = useQuery(api.payments.listAll);
+  const suppliers  = useQuery(api.suppliers.listByProject, { project_id: projectId });
   const categories = useQuery(api.categories.listByProject, { project_id: projectId });
-  const phases = useQuery(api.phases.listAll);
-  const createQ = useMutation(api.quotes.create);
-  const updateQ = useMutation(api.quotes.update);
-  const deleteQ = useMutation(api.quotes.remove);
+  const phases     = useQuery(api.phases.listAll);
 
+  const createQuote   = useMutation(api.quotes.create);
+  const updateQuote   = useMutation(api.quotes.update);
+  const removeQuote   = useMutation(api.quotes.remove);
+  const createPhase   = useMutation(api.phases.create);
+
+  const [modal, setModal]   = useState<null|{mode:"add"|"edit"; q?: any}>(null);
+  const [form, setForm]     = useState({...EMPTY});
+  const [delId, setDelId]   = useState<Id<"quotes">|null>(null);
+  const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [modal, setModal] = useState<null|{mode:"add"|"edit"; q?: typeof quotes extends (infer T)[]|undefined ? T : never}>(null);
-  const [form, setForm] = useState(EMPTY_QUOTE);
-  const [delId, setDelId] = useState<Id<"quotes">|null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Quick-add phase state
+  const [showNewPhase, setShowNewPhase] = useState(false);
+  const [phaseForm, setPhaseForm]       = useState({...EMPTY_PHASE});
 
   if (!quotes || !payments || !suppliers || !categories || !phases) return <Loader />;
 
-  const paidMap: Record<string,number> = {};
-  payments.forEach(p => { paidMap[p.quote_id] = (paidMap[p.quote_id]??0) + p.amount; });
+  // Maps
   const supMap: Record<string,string> = {};
   suppliers.forEach(s => { supMap[s._id] = s.name; });
 
-  const filtered = quotes
-    .filter(q => filterStatus==="all" || q.status===filterStatus)
-    .filter(q => !search || q.description.toLowerCase().includes(search.toLowerCase()) || (q.number||"").toLowerCase().includes(search.toLowerCase()));
+  const paidByQuote: Record<string,number> = {};
+  payments.forEach(p => { paidByQuote[p.quote_id] = (paidByQuote[p.quote_id]??0) + p.amount; });
 
-  const open = (mode:"add", q?: undefined) => { setForm(EMPTY_QUOTE); setModal({mode:"add"}); };
-  const openEdit = (q: typeof quotes[0]) => {
-    setForm({ phase_id:q.phase_id, supplier_id:q.supplier_id||"" as any, number:q.number||"", description:q.description, date:q.date||"", amount:String(q.amount), currency:q.currency, status:q.status, notes:q.notes||"" });
+  const phasesByCat = categories.map(cat => ({
+    cat, phases: phases.filter(p => p.category_id === cat._id).sort((a,b)=>a.position-b.position)
+  })).filter(g => g.phases.length > 0);
+
+  // Filter + search
+  const filtered = quotes
+    .filter(q => filter==="all" || q.status===filter)
+    .filter(q => !search || q.description.toLowerCase().includes(search.toLowerCase()) || (q.number||"").toLowerCase().includes(search.toLowerCase()))
+    .sort((a,b) => (b.date||"").localeCompare(a.date||""));
+
+  const total     = filtered.reduce((s,q) => s+q.amount, 0);
+  const totalPaid = filtered.reduce((s,q) => s+(paidByQuote[q._id]??0), 0);
+
+  const openAdd  = () => { setForm({...EMPTY}); setShowNewPhase(false); setModal({mode:"add"}); };
+  const openEdit = (q: any) => {
+    setForm({ phase_id:q.phase_id, supplier_id:q.supplier_id||"", number:q.number||"", description:q.description, date:q.date||"", amount:String(q.amount), currency:q.currency, status:q.status, notes:q.notes||"" });
+    setShowNewPhase(false);
     setModal({mode:"edit", q});
   };
-  const close = () => setModal(null);
 
   const save = async () => {
-    if (!modal || !form.description.trim() || !form.phase_id || !form.amount) return;
+    if (!modal) return;
+    const needsPhase = !form.phase_id;
+    const needsDesc  = !form.description.trim();
+    const isPrevu    = form.status === "prevu";
+    if (needsPhase || needsDesc || (!isPrevu && !form.amount)) return;
     setLoading(true);
     try {
-      const data = { phase_id: form.phase_id as Id<"phases">, supplier_id: form.supplier_id || undefined, number: form.number||undefined, description: form.description, date: form.date||undefined, amount: parseFloat(form.amount), currency: form.currency, status: form.status, notes: form.notes||undefined };
-      if (modal.mode==="add") await createQ(data as any);
-      else if (modal.q) await updateQ({ id: modal.q._id, ...data });
-      close();
+      const data = {
+        phase_id:    form.phase_id as Id<"phases">,
+        supplier_id: form.supplier_id || undefined,
+        number:      form.number || undefined,
+        description: form.description,
+        date:        form.date || undefined,
+        amount:      isPrevu && !form.amount ? 0 : parseFloat(form.amount),
+        currency:    form.currency,
+        status:      form.status,
+        notes:       form.notes || undefined,
+      };
+      if (modal.mode === "add") await createQuote(data);
+      else await updateQuote({ id: modal.q._id, ...data });
+      setModal(null);
+    } finally { setLoading(false); }
+  };
+
+  const addPhase = async () => {
+    if (!phaseForm.category_id || !phaseForm.name.trim()) return;
+    setLoading(true);
+    try {
+      const maxPos = phases.filter(p => p.category_id === phaseForm.category_id).length + 1;
+      const id = await createPhase({ category_id: phaseForm.category_id as Id<"categories">, name: phaseForm.name, status: phaseForm.status, position: maxPos });
+      setForm(f => ({...f, phase_id: id}));
+      setPhaseForm({...EMPTY_PHASE});
+      setShowNewPhase(false);
     } finally { setLoading(false); }
   };
 
   const confirmDel = async () => {
     if (!delId) return;
     setLoading(true);
-    try { await deleteQ({ id: delId }); setDelId(null); } finally { setLoading(false); }
+    try { await removeQuote({ id: delId }); setDelId(null); } finally { setLoading(false); }
   };
 
-  // Group phases by category for selector
-  const phasesByCat = categories.map(cat => ({
-    cat, phases: phases.filter(p => p.category_id === cat._id).sort((a,b)=>a.position-b.position)
-  }));
-
-  const total = filtered.reduce((s,q) => s + q.amount, 0);
-  const totalVerse = filtered.reduce((s,q) => s + (paidMap[q._id]??0), 0);
+  const isPrevu = form.status === "prevu";
 
   return (
     <div style={S.page}>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
-        <div><h1 style={S.title}>Devis</h1><div style={S.sub}>{filtered.length} devis — {fmtN(total)} FCFA engagés</div></div>
-        <button style={S.btnPrimary} onClick={() => open("add")}>+ Nouveau devis</button>
-      </div>
-
-      {/* Filters */}
-      <div style={{ display:"flex", gap:10, marginBottom:16, flexWrap:"wrap" as const }}>
-        <input style={{ ...S.input, flex:1, minWidth:200, maxWidth:320 }} placeholder="Rechercher..." value={search} onChange={e=>setSearch(e.target.value)} />
-        <select style={{ ...S.input, width:"auto" }} value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
+      {/* Toolbar */}
+      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16, flexWrap:"wrap" as const }}>
+        <div style={{ flex:1 }}>
+          <h1 style={S.title}>Devis</h1>
+          <div style={{ fontSize:13, color:"#64748b", marginTop:2 }}>{filtered.length} devis · {fmtN(total)} FCFA engagé · {fmtN(totalPaid)} versé</div>
+        </div>
+        <input style={{ ...S.input, width:180, padding:"8px 12px" }} placeholder="Rechercher…" value={search} onChange={e=>setSearch(e.target.value)} />
+        <select style={{ ...S.input, width:160, padding:"8px 12px" }} value={filter} onChange={e=>setFilter(e.target.value)}>
           <option value="all">Tous les statuts</option>
-          {STATUS_OPTS.map(s=><option key={s} value={s}>{STATUS_LABELS[s]||s}</option>)}
+          {STATUS_OPTS.map(s=><option key={s} value={s}>{STATUS_META[s]?.label||s}</option>)}
         </select>
+        <button style={S.btnPrimary} onClick={openAdd}>+ Nouveau devis</button>
       </div>
 
       {/* Table */}
       <div style={S.tableWrap}>
-        <div style={{ ...S.row, ...S.headerRow }}>
-          <span>N°</span><span>Description</span><span>Fournisseur</span><span>Montant</span><span>Versé</span><span>Statut</span><span>Actions</span>
+        <div style={{ ...S.row, ...S.hdr }}>
+          <span>N°</span><span>Description</span><span>Phase</span><span>Fournisseur</span><span>Montant</span><span>Versé</span><span>Statut</span><span>Actions</span>
         </div>
-        {filtered.length===0 && <div style={{ padding:"24px 14px", color:"#475569", textAlign:"center" as const }}>Aucun devis trouvé</div>}
-        {filtered.sort((a,b)=>(a.number||"").localeCompare(b.number||"")).map(q => {
-          const verse = paidMap[q._id]??0;
-          const reste = q.amount - verse;
+        {filtered.length===0 && <div style={{ padding:28, color:"#475569", textAlign:"center" as const }}>Aucun devis</div>}
+        {filtered.map(q => {
+          const paid  = paidByQuote[q._id] ?? 0;
+          const meta  = STATUS_META[q.status] ?? { label:q.status, color:"#64748b" };
+          const phase = phases.find(p=>p._id===q.phase_id);
           return (
-            <div key={q._id} style={S.row}>
-              <span style={{ color:"#94a3b8", fontSize:12 }}>{q.number||"—"}</span>
-              <div><div style={{ color:"#f1f5f9", fontWeight:500 }}>{q.description}</div>{q.date&&<div style={{ color:"#64748b",fontSize:11 }}>{fmtDate(q.date)}</div>}</div>
-              <span style={{ color:"#94a3b8" }}>{q.supplier_id ? supMap[q.supplier_id]||"—" : "—"}</span>
-              <span style={{ fontWeight:600, color:"#f1f5f9" }}>{fmtN(q.amount)} <span style={{ fontSize:11,color:"#475569" }}>{q.currency}</span></span>
-              <div><div style={{ color:"#10b981" }}>{fmtN(verse)} {q.currency}</div><div style={{ color: reste>0?"#f59e0b":"#10b981", fontSize:11 }}>Reste: {fmtN(reste)}</div></div>
-              <span style={{ ...S.chip, background:(STATUS_COLORS[q.status]||"#64748b")+"22", color: STATUS_COLORS[q.status]||"#64748b" }}>{STATUS_LABELS[q.status]||q.status}</span>
+            <div key={q._id} style={{ ...S.row, borderLeft: meta.dashed ? `3px dashed ${meta.color}` : `3px solid transparent` }}>
+              <span style={{ color:"#64748b", fontSize:12 }}>{q.number||"—"}</span>
+              <span style={{ color:"#f1f5f9", fontWeight:500 }}>{q.description}</span>
+              <span style={{ color:"#64748b", fontSize:12 }}>{phase?.name||"—"}</span>
+              <span style={{ color:"#94a3b8", fontSize:12 }}>{q.supplier_id ? supMap[q.supplier_id]||"—" : "—"}</span>
+              <span style={{ fontWeight:700, color: q.status==="prevu" ? "#8b5cf6" : "#f1f5f9" }}>
+                {q.amount===0 && q.status==="prevu" ? "Estimé" : fmtN(q.amount)+" "+q.currency}
+              </span>
+              <span style={{ color:"#10b981" }}>{paid>0 ? fmtN(paid) : "—"}</span>
+              <span>
+                <span style={{ background:meta.color+"22", color:meta.color, border:`1px solid ${meta.color}44`, borderStyle: meta.dashed?"dashed":"solid", borderRadius:20, padding:"3px 10px", fontSize:11, fontWeight:600, whiteSpace:"nowrap" as const }}>
+                  {meta.label}
+                </span>
+              </span>
               <div style={{ display:"flex", gap:4 }}>
-                <button style={S.btnIcon} onClick={()=>openEdit(q)} title="Modifier"><i className="ti ti-pencil"/></button>
+                <button style={S.btnIcon} onClick={()=>openEdit(q)} title="Modifier"><i className="ti ti-edit"/></button>
                 <button style={{ ...S.btnIcon, color:"#ef4444" }} onClick={()=>setDelId(q._id)} title="Supprimer"><i className="ti ti-trash"/></button>
               </div>
             </div>
           );
         })}
         {filtered.length>0 && (
-          <div style={{ ...S.row, background:"#0f172a", borderTop:"2px solid #334155" }}>
-            <span/><span style={{ color:"#94a3b8", fontWeight:600 }}>TOTAL ({filtered.length})</span><span/>
-            <span style={{ fontWeight:700, color:"#f1f5f9" }}>{fmtN(total)} FCFA</span>
-            <span style={{ fontWeight:700, color:"#10b981" }}>{fmtN(totalVerse)} FCFA</span>
+          <div style={{ ...S.row, background:"#0f172a", borderTop:"2px solid #334155", fontWeight:700 }}>
+            <span/><span style={{ color:"#64748b" }}>TOTAL</span><span/><span/>
+            <span style={{ color:"#f1f5f9" }}>{fmtN(total)} FCFA</span>
+            <span style={{ color:"#10b981" }}>{fmtN(totalPaid)}</span>
             <span/><span/>
           </div>
         )}
       </div>
 
-      {/* Modal */}
+      {/* Add/Edit Modal */}
       {modal && (
-        <div style={S.overlay} onClick={close}>
-          <div style={S.modal} onClick={e=>e.stopPropagation()}>
-            <div style={S.modalTitle}>{modal.mode==="add"?"Nouveau devis":"Modifier le devis"}</div>
+        <div style={S.overlay} onClick={()=>setModal(null)}>
+          <div style={{ background:"#1e293b", border:"1px solid #334155", borderRadius:16, padding:28, width:"100%", maxWidth:580, maxHeight:"90vh", overflowY:"auto" as const }} onClick={e=>e.stopPropagation()}>
+            <div style={{ fontWeight:700, color:"#f1f5f9", fontSize:16, marginBottom:20 }}>
+              {modal.mode==="add" ? "Nouveau devis" : "Modifier le devis"}
+            </div>
+
+            {/* Status first - controls what fields are required */}
             <div style={S.grid2}>
-              <div>
+              <div style={{ gridColumn:"1/-1" }}>
+                <label style={S.label}>Statut *</label>
+                <div style={{ display:"flex", gap:8, flexWrap:"wrap" as const }}>
+                  {STATUS_OPTS.map(s => {
+                    const m = STATUS_META[s];
+                    return (
+                      <button key={s} type="button" onClick={()=>setForm(f=>({...f,status:s}))}
+                        style={{ padding:"6px 14px", borderRadius:20, fontSize:12, fontWeight:600, cursor:"pointer", border:`1px ${m.dashed?"dashed":"solid"} ${form.status===s ? m.color : "#334155"}`, background: form.status===s ? m.color+"22" : "transparent", color: form.status===s ? m.color : "#64748b" }}>
+                        {m.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {isPrevu && <div style={{ fontSize:11, color:"#8b5cf6", marginTop:6 }}>💡 Prévu = travaux planifiés sans devis final. Le montant est optionnel (estimation).</div>}
+              </div>
+
+              {/* Phase selector + quick-add */}
+              <div style={{ gridColumn:"1/-1" }}>
                 <label style={S.label}>Phase *</label>
-                <select style={S.input} value={form.phase_id} onChange={e=>setForm(f=>({...f,phase_id:e.target.value as any}))}>
-                  <option value="">— Sélectionner —</option>
-                  {phasesByCat.map(({cat,phases:ps})=>ps.length>0&&(
-                    <optgroup key={cat._id} label={cat.name}>
-                      {ps.map(ph=><option key={ph._id} value={ph._id}>{ph.name}</option>)}
-                    </optgroup>
-                  ))}
-                </select>
+                <div style={{ display:"flex", gap:8 }}>
+                  <select style={{ ...S.input, flex:1 }} value={form.phase_id} onChange={e=>setForm(f=>({...f,phase_id:e.target.value}))}>
+                    <option value="">— Sélectionner une phase —</option>
+                    {phasesByCat.map(({cat,phases:ps})=>(
+                      <optgroup key={cat._id} label={cat.name}>
+                        {ps.map(ph=><option key={ph._id} value={ph._id}>{ph.name}</option>)}
+                      </optgroup>
+                    ))}
+                  </select>
+                  <button type="button" title="Créer une nouvelle phase" onClick={()=>setShowNewPhase(v=>!v)}
+                    style={{ background: showNewPhase?"#6366f1":"#1e293b", border:"1px solid #6366f1", borderRadius:8, color: showNewPhase?"#fff":"#6366f1", padding:"0 14px", cursor:"pointer", fontSize:18, fontWeight:700, flexShrink:0 }}>
+                    {showNewPhase ? "✕" : "+"}
+                  </button>
+                </div>
+
+                {/* Inline new-phase form */}
+                {showNewPhase && (
+                  <div style={{ background:"#0f172a", border:"1px dashed #6366f1", borderRadius:10, padding:14, marginTop:10 }}>
+                    <div style={{ fontSize:12, color:"#6366f1", fontWeight:600, marginBottom:10 }}>Nouvelle phase</div>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
+                      <div>
+                        <label style={S.label}>Catégorie *</label>
+                        <select style={S.input} value={phaseForm.category_id} onChange={e=>setPhaseForm(f=>({...f,category_id:e.target.value}))}>
+                          <option value="">— Catégorie —</option>
+                          {categories.map(c=><option key={c._id} value={c._id}>{c.name}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={S.label}>Statut</label>
+                        <select style={S.input} value={phaseForm.status} onChange={e=>setPhaseForm(f=>({...f,status:e.target.value}))}>
+                          <option value="planned">Planifiée</option>
+                          <option value="in_progress">En cours</option>
+                          <option value="completed">Terminée</option>
+                          <option value="on_hold">En attente</option>
+                        </select>
+                      </div>
+                      <div style={{ gridColumn:"1/-1" }}>
+                        <label style={S.label}>Nom de la phase *</label>
+                        <input style={S.input} value={phaseForm.name} onChange={e=>setPhaseForm(f=>({...f,name:e.target.value}))} placeholder="Ex: Carrelage salon" />
+                      </div>
+                    </div>
+                    <button style={{ ...S.btnPrimary, fontSize:12, padding:"8px 16px" }} onClick={addPhase} disabled={loading||!phaseForm.category_id||!phaseForm.name}>
+                      {loading?"…":"Créer et sélectionner cette phase"}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label style={S.label}>Description *</label>
+                <input style={S.input} value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} placeholder="Ex: Fourniture carrelage 60×60" />
+              </div>
+              <div>
+                <label style={S.label}>N° devis</label>
+                <input style={S.input} value={form.number} onChange={e=>setForm(f=>({...f,number:e.target.value}))} placeholder="DEV-001" />
               </div>
               <div>
                 <label style={S.label}>Fournisseur</label>
-                <select style={S.input} value={form.supplier_id} onChange={e=>setForm(f=>({...f,supplier_id:e.target.value as any}))}>
-                  <option value="">— Aucun —</option>
+                <select style={S.input} value={form.supplier_id} onChange={e=>setForm(f=>({...f,supplier_id:e.target.value}))}>
+                  <option value="">— Aucun / À définir —</option>
                   {suppliers.map(s=><option key={s._id} value={s._id}>{s.name}</option>)}
                 </select>
-              </div>
-            </div>
-            <div style={S.grid2}>
-              <div>
-                <label style={S.label}>N° Devis</label>
-                <input style={S.input} value={form.number} onChange={e=>setForm(f=>({...f,number:e.target.value}))} placeholder="Ex: DV-001" />
               </div>
               <div>
                 <label style={S.label}>Date</label>
                 <input style={S.input} type="date" value={form.date} onChange={e=>setForm(f=>({...f,date:e.target.value}))} />
               </div>
-            </div>
-            <label style={S.label}>Description *</label>
-            <input style={S.input} value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} placeholder="Description des travaux" />
-            <div style={S.grid2}>
               <div>
-                <label style={S.label}>Montant *</label>
-                <input style={S.input} type="number" value={form.amount} onChange={e=>setForm(f=>({...f,amount:e.target.value}))} placeholder="0" />
+                <label style={S.label}>Montant {isPrevu ? "(estimation optionnelle)" : "*"}</label>
+                <input style={S.input} type="number" value={form.amount} onChange={e=>setForm(f=>({...f,amount:e.target.value}))} placeholder={isPrevu?"Ex: 500 000 (optionnel)":"Montant"} />
               </div>
               <div>
                 <label style={S.label}>Devise</label>
@@ -169,35 +282,32 @@ export default function QuotesPage({ projectId }: Props) {
                   {CURRENCY_OPTS.map(c=><option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-            </div>
-            <div style={S.grid2}>
-              <div>
-                <label style={S.label}>Statut</label>
-                <select style={S.input} value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))}>
-                  {STATUS_OPTS.map(s=><option key={s} value={s}>{STATUS_LABELS[s]||s}</option>)}
-                </select>
-              </div>
-              <div>
+              <div style={{ gridColumn:"1/-1" }}>
                 <label style={S.label}>Notes</label>
-                <input style={S.input} value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} placeholder="Optionnel" />
+                <textarea style={{ ...S.input, height:60, resize:"vertical" as const }} value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} placeholder="Observations, conditions, remarques…" />
               </div>
             </div>
+
             <div style={{ display:"flex", gap:8, marginTop:20 }}>
-              <button style={S.btnCancel} onClick={close}>Annuler</button>
-              <button style={{ ...S.btnPrimary, flex:1 }} onClick={save} disabled={loading||!form.description||!form.phase_id||!form.amount}>{loading?"Sauvegarde...":"Sauvegarder"}</button>
+              <button style={S.btnCancel} onClick={()=>setModal(null)}>Annuler</button>
+              <button style={{ ...S.btnPrimary, flex:1 }} onClick={save}
+                disabled={loading||!form.description||!form.phase_id||(!isPrevu&&!form.amount)}>
+                {loading?"Sauvegarde…":"Sauvegarder"}
+              </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* Delete confirm */}
       {delId && (
         <div style={S.overlay} onClick={()=>setDelId(null)}>
-          <div style={{ ...S.modal, maxWidth:360 }} onClick={e=>e.stopPropagation()}>
+          <div style={{ background:"#1e293b", border:"1px solid #334155", borderRadius:16, padding:28, maxWidth:360, width:"100%" }} onClick={e=>e.stopPropagation()}>
             <div style={{ color:"#f1f5f9", fontWeight:600, fontSize:16, marginBottom:8 }}>Supprimer ce devis ?</div>
-            <div style={{ color:"#94a3b8", fontSize:13, marginBottom:20 }}>Tous les paiements associés seront aussi supprimés.</div>
+            <div style={{ color:"#94a3b8", fontSize:13, marginBottom:20 }}>Les paiements associés seront aussi supprimés.</div>
             <div style={{ display:"flex", gap:8 }}>
               <button style={S.btnCancel} onClick={()=>setDelId(null)}>Annuler</button>
-              <button style={{ ...S.btnDanger, flex:1 }} onClick={confirmDel} disabled={loading}>{loading?"...":"Supprimer"}</button>
+              <button style={{ background:"#ef4444", color:"#fff", border:"none", borderRadius:8, padding:"10px 20px", fontSize:13, cursor:"pointer", fontWeight:600, flex:1 }} onClick={confirmDel} disabled={loading}>{loading?"…":"Supprimer"}</button>
             </div>
           </div>
         </div>
@@ -206,22 +316,20 @@ export default function QuotesPage({ projectId }: Props) {
   );
 }
 
-function Loader() { return <div style={{ display:"flex",alignItems:"center",justifyContent:"center",height:200 }}><i className="ti ti-loader" style={{ fontSize:32,color:"#6366f1" }}/></div>; }
+function Loader() { return <div style={{ display:"flex",alignItems:"center",justifyContent:"center",height:200,color:"#6366f1" }}><i className="ti ti-loader" style={{ fontSize:32 }}/></div>; }
 
 const S: Record<string,React.CSSProperties> = {
-  page:{ padding:"clamp(12px, 3vw, 28px)", paddingBottom:"max(28px, calc(env(safe-area-inset-bottom) + 70px))" }, title:{ fontSize:22, fontWeight:700, color:"#f1f5f9" }, sub:{ fontSize:13, color:"#64748b", marginTop:4 },
+  page:{ padding:"clamp(12px, 3vw, 28px)", paddingBottom:"max(28px, calc(env(safe-area-inset-bottom) + 70px))" },
+  title:{ fontSize:22, fontWeight:700, color:"#f1f5f9" },
   tableWrap:{ background:"#1e293b", border:"1px solid #334155", borderRadius:12, overflow:"hidden" },
-  headerRow:{ background:"#0f172a", color:"#64748b", fontSize:11, textTransform:"uppercase" as const, fontWeight:600 },
-  row:{ display:"grid", gridTemplateColumns:"80px 1fr 140px 130px 130px 110px 80px", gap:12, padding:"12px 14px", borderBottom:"1px solid #0f172a", alignItems:"center", fontSize:13 },
-  chip:{ fontSize:11, padding:"3px 8px", borderRadius:20, fontWeight:600 },
-  btnPrimary:{ background:"#6366f1", color:"#fff", border:"none", borderRadius:8, padding:"10px 18px", fontSize:13, cursor:"pointer", fontWeight:600 },
-  btnIcon:{ background:"transparent", border:"none", color:"#64748b", cursor:"pointer", fontSize:16, padding:"4px 6px" },
-  btnCancel:{ background:"#334155", color:"#f1f5f9", border:"none", borderRadius:8, padding:"10px 20px", fontSize:13, cursor:"pointer" },
-  btnDanger:{ background:"#ef4444", color:"#fff", border:"none", borderRadius:8, padding:"10px 20px", fontSize:13, cursor:"pointer", fontWeight:600 },
+  hdr:{ background:"#0f172a", color:"#64748b", fontSize:11, textTransform:"uppercase" as const, fontWeight:600, letterSpacing:0.5 },
+  row:{ display:"grid", gridTemplateColumns:"70px 1fr 120px 130px 130px 100px 100px 70px", gap:10, padding:"11px 14px", borderBottom:"1px solid #0f172a", alignItems:"center", fontSize:13 },
   overlay:{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, padding:16 },
-  modal:{ background:"#1e293b", border:"1px solid #334155", borderRadius:16, padding:28, width:"100%", maxWidth:560, maxHeight:"90vh", overflowY:"auto" as const },
-  modalTitle:{ fontSize:18, fontWeight:700, color:"#f1f5f9", marginBottom:20 },
-  label:{ display:"block", fontSize:11, color:"#94a3b8", marginBottom:4, marginTop:12, fontWeight:600, textTransform:"uppercase" as const, letterSpacing:0.5 },
-  input:{ width:"100%", background:"#0f172a", border:"1px solid #334155", borderRadius:8, color:"#f1f5f9", padding:"10px 12px", fontSize:14, boxSizing:"border-box" as const },
   grid2:{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 },
+  btnPrimary:{ background:"#6366f1", color:"#fff", border:"none", borderRadius:8, padding:"10px 18px", fontSize:13, cursor:"pointer", fontWeight:600 },
+  btnCancel:{ background:"#334155", color:"#f1f5f9", border:"none", borderRadius:8, padding:"10px 20px", fontSize:13, cursor:"pointer" },
+  btnIcon:{ background:"transparent", border:"none", color:"#64748b", cursor:"pointer", fontSize:16, padding:"4px 6px" },
+  chip:{ borderRadius:20, padding:"3px 10px", fontSize:11, fontWeight:600 },
+  label:{ display:"block", fontSize:11, color:"#94a3b8", marginBottom:4, fontWeight:600, textTransform:"uppercase" as const, letterSpacing:0.5 },
+  input:{ width:"100%", background:"#0f172a", border:"1px solid #334155", borderRadius:8, color:"#f1f5f9", padding:"10px 12px", fontSize:14, boxSizing:"border-box" as const },
 };

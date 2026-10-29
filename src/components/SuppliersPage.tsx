@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
-import { fmtN } from "../lib/utils";
+import { fmtN, fmtDate } from "../lib/utils";
 
 interface Props { projectId: Id<"projects"> }
 const EMPTY = { name:"", phone:"", email:"", address:"", speciality:"", notes:"" };
@@ -79,7 +79,22 @@ export default function SuppliersPage({ projectId }: Props) {
               <div style={{ fontWeight:700, color:"#f1f5f9", fontSize:15, marginBottom:2 }}>{s.name}</div>
               {s.speciality && <div style={{ color:"#6366f1", fontSize:12, fontWeight:500, marginBottom:8 }}>{s.speciality}</div>}
               {s.phone && <div style={S.contact}><i className="ti ti-phone" style={{ fontSize:12 }}/> {s.phone}</div>}
-              {s.email && <div style={S.contact}><i className="ti ti-mail" style={{ fontSize:12 }}/> {s.email}</div>}
+              {s.email && (
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:4 }}>
+                  <div style={S.contact}><i className="ti ti-mail" style={{ fontSize:12 }}/> {s.email}</div>
+                  <a href={(() => {
+                    const sQuotes = quotes.filter(q=>q.supplier_id===s._id);
+                    const totalEng = sQuotes.reduce((sum,q)=>sum+q.amount,0);
+                    const totalVer = sQuotes.reduce((sum,q)=>sum+(paidMap[q._id]??0),0);
+                    const lines = sQuotes.map(q=>`- ${q.description}: ${q.amount.toLocaleString('fr-FR')} FCFA (versé: ${(paidMap[q._id]??0).toLocaleString('fr-FR')} FCFA)`).join('%0A');
+                    const body = `Bonjour,%0A%0AVoici l'état des lieux de nos engagements :%0A%0A${lines}%0A%0ATotal engagé : ${totalEng.toLocaleString('fr-FR')} FCFA%0ATotal versé : ${totalVer.toLocaleString('fr-FR')} FCFA%0AReste à payer : ${(totalEng-totalVer).toLocaleString('fr-FR')} FCFA%0A%0ACordialement`;
+                    return `mailto:${s.email}?subject=État des lieux — Résidence Veraluz&body=${body}`;
+                  })()} title="Envoyer état des lieux par email"
+                    style={{ background:"#6366f122", border:"1px solid #6366f144", borderRadius:6, color:"#6366f1", padding:"3px 8px", fontSize:11, fontWeight:600, cursor:"pointer", textDecoration:"none", display:"flex", alignItems:"center", gap:4, flexShrink:0 }}>
+                    <i className="ti ti-send" style={{ fontSize:12 }}/> Email
+                  </a>
+                </div>
+              )}
               {s.address && <div style={S.contact}><i className="ti ti-map-pin" style={{ fontSize:12 }}/> {s.address}</div>}
               <div style={S.divider}/>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, textAlign:"center" as const }}>
