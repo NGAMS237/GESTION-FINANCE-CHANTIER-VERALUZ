@@ -21,9 +21,22 @@ const NAV = [
   { id: "reports", icon: "ti-report", label: "Rapports" },
 ] as const;
 
+const APP_URL = "https://ngams237.github.io/GESTION-FINANCE-CHANTIER-VERALUZ/";
+
 export default function App() {
   const [page, setPage] = useState<Page>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  const share = async () => {
+    if (navigator.share) {
+      await navigator.share({ title: "Chantier Finance — Résidence Veraluz", url: APP_URL });
+    } else {
+      await navigator.clipboard.writeText(APP_URL);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    }
+  };
   const projects = useQuery(api.projects.list);
   const project = projects?.[0];
 
@@ -68,7 +81,15 @@ export default function App() {
           ))}
         </nav>
         <div style={styles.sidebarFooter}>
-          {sidebarOpen && <span style={{ fontSize: 11, color: "#475569" }}>Propulsé par Convex</span>}
+          <button
+            onClick={share}
+            title="Partager / Inviter"
+            style={{ display:"flex", alignItems:"center", gap:8, background:"#6366f122", border:"1px solid #6366f144", borderRadius:8, color:copied?"#10b981":"#6366f1", padding:"8px 10px", cursor:"pointer", width:"100%", fontSize:12, fontWeight:600 }}
+          >
+            <i className={`ti ${copied ? "ti-check" : "ti-share"}`} style={{ fontSize:16, minWidth:16 }}/>
+            {sidebarOpen && <span>{copied ? "Lien copié !" : "Partager l'app"}</span>}
+          </button>
+          {sidebarOpen && <div style={{ fontSize:10, color:"#334155", marginTop:8, textAlign:"center" as const }}>Propulsé par Convex</div>}
         </div>
       </aside>
 

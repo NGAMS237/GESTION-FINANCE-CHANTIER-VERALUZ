@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/GESTION-FINANCE-CHANTIER-VERALUZ/sw.js', { scope: '/GESTION-FINANCE-CHANTIER-VERALUZ/' })})}
