@@ -6,6 +6,14 @@ import { fmtN } from "../lib/utils";
 
 interface Props { projectId: Id<"projects"> }
 const EMPTY = { name:"", phone:"", email:"", address:"", speciality:"", notes:"" };
+const FIELDS: [keyof typeof EMPTY, string, string, string][] = [
+  ["name","Nom *","text","Ex: SABC Construction"],
+  ["phone","Téléphone","tel","Ex: +237 6XX XX XX XX"],
+  ["email","Email","email","contact@fournisseur.com"],
+  ["speciality","Spécialité","text","Ex: Maçonnerie, Plomberie..."],
+  ["address","Adresse","text","Ex: Douala, Cameroun"],
+  ["notes","Notes","text","Observations..."],
+];
 
 export default function SuppliersPage({ projectId }: Props) {
   const suppliers = useQuery(api.suppliers.listByProject, { project_id: projectId });
@@ -92,7 +100,7 @@ export default function SuppliersPage({ projectId }: Props) {
         <div style={S.overlay} onClick={() => setModal(null)}>
           <div style={S.modal} onClick={e=>e.stopPropagation()}>
             <div style={S.modalTitle}>{modal.mode==="add"?"Nouveau fournisseur":"Modifier le fournisseur"}</div>
-            {([["name","Nom *","text","Ex: SABC Construction"],["phone","Téléphone","tel","Ex: +237 6XX XX XX XX"],["email","Email","email","contact@fournisseur.com"],["speciality","Spécialité","text","Ex: Maçonnerie, Plomberie..."],["address","Adresse","text","Ex: Douala, Cameroun"],["notes","Notes","text","Observations..."]]) as [keyof typeof EMPTY, string, string, string][]).map(([key,label,type,ph]) => (
+            {(FIELDS as [keyof typeof EMPTY, string, string, string][]).map(([key,label,type,ph]) => (
               <div key={key}>
                 <label style={S.label}>{label}</label>
                 <input style={S.input} type={type} value={form[key]} onChange={e=>setForm(f=>({...f,[key]:e.target.value}))} placeholder={ph} />
