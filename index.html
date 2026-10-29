@@ -3264,7 +3264,7 @@ async function saveQuote() {
         const payData={quote_id:savedId, date:pDt, amount:pAmt,
           method:document.getElementById('qpMeth').value,
           reference:document.getElementById('qpRef').value||null,
-          notes:document.getElementById('qpNote').value||null};
+          note:document.getElementById('qpNote').value||null};
         const {error:payErr}=await sb.from('project_payments').insert(payData);
         if(payErr) payMsg=' (⚠ versement non enregistré: '+payErr.message+')';
         else payMsg=' + versement enregistré ✓';

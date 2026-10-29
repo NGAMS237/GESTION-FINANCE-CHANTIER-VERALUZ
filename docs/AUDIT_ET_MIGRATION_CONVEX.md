@@ -35,9 +35,9 @@ Une faille de l'une expose l'autre.
 ### 🟠 Bug
 
 **B1. Le versement saisi depuis la fiche d'un devis n'est jamais enregistré.**
-`saveQuote()` (ligne 3263) insère le champ `notes` dans `project_payments`, alors que la colonne
+`saveQuote()` (ligne 3267) insère le champ `notes` dans `project_payments`, alors que la colonne
 est `note` (ligne 3315 et toutes les lectures). PostgREST rejette l'insertion et l'utilisateur
-voit « ⚠ versement non enregistré ». Le paiement saisi par `savePay()` fonctionne.
+voit « ⚠ versement non enregistré ». Le paiement saisi par `savePay()` fonctionne. **Corrigé dans cette PR.**
 
 ### 🟡 Moyen
 
