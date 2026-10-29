@@ -1,4 +1,5 @@
 import { useQuery } from "convex/react";
+import { useIsMobile } from "../lib/useIsMobile";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { fmtN, STATUS_COLORS } from "../lib/utils";
@@ -25,6 +26,7 @@ export default function Dashboard({ project }: Props) {
   const suppliers  = useQuery(api.suppliers.listByProject, { project_id: project._id });
   const phases     = useQuery(api.phases.listAll);
 
+  const isMobile = useIsMobile();
   if (!quotes || !payments || !categories || !suppliers || !phases) return <PageLoader />;
 
   /* ── Totaux globaux ── */
@@ -89,7 +91,7 @@ export default function Dashboard({ project }: Props) {
   };
 
   return (
-    <div style={{ padding:24, maxWidth:1200 }}>
+    <div style={{ padding:isMobile?"12px 12px 80px":"24px", maxWidth:1200 }}>
 
       {/* ── Header ── */}
       <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:24 }}>
@@ -103,7 +105,7 @@ export default function Dashboard({ project }: Props) {
       </div>
 
       {/* ── KPI row ── */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:20 }}>
+      <div style={{ display:"grid", gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(4,1fr)", gap:12, marginBottom:20 }}>
         <Kpi icon="ti-files"     color="#6366f1" label="Devis engagés"  value={`${fmtN(totalEngaged)} ${project.currency}`} sub={`${quotes.length} devis`} />
         <Kpi icon="ti-cash"      color="#10b981" label="Versé"          value={`${fmtN(totalVerse)} ${project.currency}`}   sub={`${avancement}% du budget`} />
         <Kpi icon="ti-clock"     color="#f59e0b" label="Reste à payer"  value={`${fmtN(totalReste)} ${project.currency}`}   sub="devis − versements" />
@@ -111,7 +113,7 @@ export default function Dashboard({ project }: Props) {
       </div>
 
       {/* ── Ligne 2 : Donut + Top fournisseurs ── */}
-      <div style={{ display:"grid", gridTemplateColumns:"300px 1fr", gap:16, marginBottom:16 }}>
+      <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"300px 1fr", gap:16, marginBottom:16 }}>
 
         {/* Donut */}
         <Card title="Répartition budget" icon="ti-chart-donut-2">
@@ -177,7 +179,7 @@ export default function Dashboard({ project }: Props) {
       )}
 
       {/* ── Ligne 3 : Statuts + Avancement ── */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+      <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr 1fr", gap:16 }}>
         <Card title="Statuts des devis" icon="ti-files">
           <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginTop:4 }}>
             {Object.entries(byStatus).map(([s, n]) => (

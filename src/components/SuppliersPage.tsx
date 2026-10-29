@@ -132,7 +132,7 @@ export default function SuppliersPage({ projectId }: Props) {
 function Loader() { return <div style={{ display:"flex",alignItems:"center",justifyContent:"center",height:200 }}><i className="ti ti-loader" style={{ fontSize:32,color:"#6366f1" }}/></div>; }
 
 const S: Record<string,React.CSSProperties> = {
-  page:{ padding:28 }, title:{ fontSize:22, fontWeight:700, color:"#f1f5f9" }, sub:{ fontSize:13, color:"#64748b", marginTop:4 },
+  page:{ padding:"clamp(12px, 3vw, 28px)", paddingBottom:"max(28px, calc(env(safe-area-inset-bottom) + 70px))" }, title:{ fontSize:22, fontWeight:700, color:"#f1f5f9" }, sub:{ fontSize:13, color:"#64748b", marginTop:4 },
   grid:{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(280px, 1fr))", gap:16 },
   card:{ background:"#1e293b", border:"1px solid #334155", borderRadius:12, padding:20 },
   avatar:{ width:44, height:44, borderRadius:12, background:"#6366f122", color:"#6366f1", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, fontWeight:700 },

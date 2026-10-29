@@ -209,7 +209,7 @@ export default function QuotesPage({ projectId }: Props) {
 function Loader() { return <div style={{ display:"flex",alignItems:"center",justifyContent:"center",height:200 }}><i className="ti ti-loader" style={{ fontSize:32,color:"#6366f1" }}/></div>; }
 
 const S: Record<string,React.CSSProperties> = {
-  page:{ padding:28 }, title:{ fontSize:22, fontWeight:700, color:"#f1f5f9" }, sub:{ fontSize:13, color:"#64748b", marginTop:4 },
+  page:{ padding:"clamp(12px, 3vw, 28px)", paddingBottom:"max(28px, calc(env(safe-area-inset-bottom) + 70px))" }, title:{ fontSize:22, fontWeight:700, color:"#f1f5f9" }, sub:{ fontSize:13, color:"#64748b", marginTop:4 },
   tableWrap:{ background:"#1e293b", border:"1px solid #334155", borderRadius:12, overflow:"hidden" },
   headerRow:{ background:"#0f172a", color:"#64748b", fontSize:11, textTransform:"uppercase" as const, fontWeight:600 },
   row:{ display:"grid", gridTemplateColumns:"80px 1fr 140px 130px 130px 110px 80px", gap:12, padding:"12px 14px", borderBottom:"1px solid #0f172a", alignItems:"center", fontSize:13 },
