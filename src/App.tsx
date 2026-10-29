@@ -7,12 +7,14 @@ import QuotesPage from "./components/QuotesPage";
 import PaymentsPage from "./components/PaymentsPage";
 import SuppliersPage from "./components/SuppliersPage";
 import ReportsPage from "./components/ReportsPage";
+import PhasesPage from "./components/PhasesPage";
 
-type Page = "dashboard" | "categories" | "quotes" | "payments" | "suppliers" | "reports";
+type Page = "dashboard" | "categories" | "phases" | "quotes" | "payments" | "suppliers" | "reports";
 
 const NAV = [
   { id: "dashboard", icon: "ti-layout-dashboard", label: "Tableau de bord" },
   { id: "categories", icon: "ti-category", label: "Catégories" },
+  { id: "phases", icon: "ti-layers-intersect", label: "Phases" },
   { id: "quotes", icon: "ti-file-text", label: "Devis" },
   { id: "payments", icon: "ti-credit-card", label: "Paiements" },
   { id: "suppliers", icon: "ti-users", label: "Fournisseurs" },
@@ -30,6 +32,7 @@ export default function App() {
     switch (page) {
       case "dashboard": return <Dashboard project={project} />;
       case "categories": return <CategoriesPage projectId={project._id} />;
+      case "phases": return <PhasesPage projectId={project._id} />;
       case "quotes": return <QuotesPage projectId={project._id} />;
       case "payments": return <PaymentsPage projectId={project._id} />;
       case "suppliers": return <SuppliersPage projectId={project._id} />;

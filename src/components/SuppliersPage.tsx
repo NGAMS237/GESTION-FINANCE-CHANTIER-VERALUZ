@@ -2,128 +2,141 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
+import { fmtN } from "../lib/utils";
 
 interface Props { projectId: Id<"projects"> }
+const EMPTY = { name:"", phone:"", email:"", address:"", speciality:"", notes:"" };
 
 export default function SuppliersPage({ projectId }: Props) {
   const suppliers = useQuery(api.suppliers.listByProject, { project_id: projectId });
   const quotes = useQuery(api.quotes.listAll);
   const payments = useQuery(api.payments.listAll);
-  const createSupplier = useMutation(api.suppliers.create);
-  const updateSupplier = useMutation(api.suppliers.update);
-  const removeSupplier = useMutation(api.suppliers.remove);
+  const create = useMutation(api.suppliers.create);
+  const update = useMutation(api.suppliers.update);
+  const remove = useMutation(api.suppliers.remove);
 
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: "", phone: "", email: "", address: "", speciality: "", notes: "" });
+  const [modal, setModal] = useState<null|{mode:"add"|"edit"; s?: any}>(null);
+  const [form, setForm] = useState(EMPTY);
+  const [delId, setDelId] = useState<Id<"suppliers">|null>(null);
+  const [loading, setLoading] = useState(false);
 
   if (!suppliers || !quotes || !payments) return <Loader />;
 
-  // Compute paid per supplier
-  const paidMap: Record<string, number> = {};
-  payments.forEach((p) => { paidMap[p.quote_id] = (paidMap[p.quote_id] ?? 0) + p.amount; });
-  const supplierPaid: Record<string, number> = {};
-  const supplierEngaged: Record<string, number> = {};
-  quotes.forEach((q) => {
-    if (q.supplier_id) {
-      supplierEngaged[q.supplier_id] = (supplierEngaged[q.supplier_id] ?? 0) + q.amount;
-      supplierPaid[q.supplier_id] = (supplierPaid[q.supplier_id] ?? 0) + (paidMap[q._id] ?? 0);
-    }
-  });
+  const paidMap: Record<string,number> = {};
+  payments.forEach(p => { paidMap[p.quote_id] = (paidMap[p.quote_id]??0) + p.amount; });
 
-  const handleAdd = async () => {
-    if (!form.name) return;
-    await createSupplier({ project_id: projectId, name: form.name, phone: form.phone || undefined, email: form.email || undefined, address: form.address || undefined, speciality: form.speciality || undefined, notes: form.notes || undefined });
-    setForm({ name: "", phone: "", email: "", address: "", speciality: "", notes: "" });
-    setShowForm(false);
+  const open = (mode:"add"|"edit", s?: any) => {
+    setForm(s ? { name:s.name, phone:s.phone||"", email:s.email||"", address:s.address||"", speciality:s.speciality||"", notes:s.notes||"" } : EMPTY);
+    setModal({ mode, s });
   };
 
-  const fmtN = (n: number) => Math.abs(n).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  const save = async () => {
+    if (!modal || !form.name.trim()) return;
+    setLoading(true);
+    try {
+      const d = { name:form.name, phone:form.phone||undefined, email:form.email||undefined, address:form.address||undefined, speciality:form.speciality||undefined, notes:form.notes||undefined };
+      if (modal.mode==="add") await create({ project_id: projectId, ...d });
+      else await update({ id: modal.s._id, ...d });
+      setModal(null);
+    } finally { setLoading(false); }
+  };
+
+  const confirmDel = async () => {
+    if (!delId) return;
+    setLoading(true);
+    try { await remove({ id: delId }); setDelId(null); } finally { setLoading(false); }
+  };
 
   return (
     <div style={S.page}>
-      <div style={S.header}>
-        <div>
-          <h1 style={S.title}>Fournisseurs</h1>
-          <div style={S.sub}>{suppliers.length} fournisseurs</div>
-        </div>
-        <button style={S.btn} onClick={() => setShowForm(!showForm)}>
-          <i className="ti ti-plus" /> Ajouter
-        </button>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:24 }}>
+        <div><h1 style={S.title}>Fournisseurs</h1><div style={S.sub}>{suppliers.length} fournisseurs</div></div>
+        <button style={S.btnPrimary} onClick={() => open("add")}>+ Ajouter</button>
       </div>
 
-      {showForm && (
-        <div style={S.formCard}>
-          <h3 style={{ color: "#cbd5e1", marginBottom: 16, fontSize: 14 }}>Nouveau fournisseur</h3>
-          <div style={S.formGrid}>
-            {(["name", "phone", "email", "address", "speciality"] as const).map((f) => (
-              <input key={f} style={S.input} placeholder={f === "name" ? "Nom *" : f === "speciality" ? "Spécialité" : f.charAt(0).toUpperCase() + f.slice(1)} value={form[f]} onChange={(e) => setForm({ ...form, [f]: e.target.value })} />
-            ))}
-            <input style={S.input} placeholder="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-          </div>
-          <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-            <button style={S.btn} onClick={handleAdd}>Enregistrer</button>
-            <button style={S.btnSec} onClick={() => setShowForm(false)}>Annuler</button>
-          </div>
-        </div>
-      )}
-
       <div style={S.grid}>
-        {suppliers.map((s) => {
-          const engaged = supplierEngaged[s._id] ?? 0;
-          const paid = supplierPaid[s._id] ?? 0;
-          const reste = engaged - paid;
+        {suppliers.map(s => {
+          const eng = quotes.filter(q=>q.supplier_id===s._id).reduce((sum,q)=>sum+q.amount, 0);
+          const ver = quotes.filter(q=>q.supplier_id===s._id).reduce((sum,q)=>sum+(paidMap[q._id]??0), 0);
+          const nDevis = quotes.filter(q=>q.supplier_id===s._id).length;
           return (
             <div key={s._id} style={S.card}>
-              <div style={S.cardHeader}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:14 }}>
                 <div style={S.avatar}>{s.name.charAt(0).toUpperCase()}</div>
-                <div>
-                  <div style={S.cardName}>{s.name}</div>
-                  <div style={S.cardSpec}>{s.speciality ?? "—"}</div>
+                <div style={{ display:"flex", gap:4 }}>
+                  <button style={S.btnIcon} onClick={() => open("edit", s)} title="Modifier"><i className="ti ti-pencil"/></button>
+                  <button style={{ ...S.btnIcon, color:"#ef4444" }} onClick={() => setDelId(s._id)} title="Supprimer"><i className="ti ti-trash"/></button>
                 </div>
               </div>
-              <div style={S.cardInfo}>
-                {s.phone && <div><i className="ti ti-phone" style={{ marginRight: 6, color: "#64748b" }} />{s.phone}</div>}
-                {s.email && <div><i className="ti ti-mail" style={{ marginRight: 6, color: "#64748b" }} />{s.email}</div>}
-                {s.address && <div><i className="ti ti-map-pin" style={{ marginRight: 6, color: "#64748b" }} />{s.address}</div>}
+              <div style={{ fontWeight:700, color:"#f1f5f9", fontSize:15, marginBottom:2 }}>{s.name}</div>
+              {s.speciality && <div style={{ color:"#6366f1", fontSize:12, fontWeight:500, marginBottom:8 }}>{s.speciality}</div>}
+              {s.phone && <div style={S.contact}><i className="ti ti-phone" style={{ fontSize:12 }}/> {s.phone}</div>}
+              {s.email && <div style={S.contact}><i className="ti ti-mail" style={{ fontSize:12 }}/> {s.email}</div>}
+              {s.address && <div style={S.contact}><i className="ti ti-map-pin" style={{ fontSize:12 }}/> {s.address}</div>}
+              <div style={S.divider}/>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, textAlign:"center" as const }}>
+                <div><div style={{ color:"#f1f5f9", fontWeight:700, fontSize:13 }}>{nDevis}</div><div style={{ color:"#64748b", fontSize:10 }}>Devis</div></div>
+                <div><div style={{ color:"#f1f5f9", fontWeight:700, fontSize:12 }}>{fmtN(eng)}</div><div style={{ color:"#64748b", fontSize:10 }}>Engagé FCFA</div></div>
+                <div><div style={{ color:"#10b981", fontWeight:700, fontSize:12 }}>{fmtN(ver)}</div><div style={{ color:"#64748b", fontSize:10 }}>Versé FCFA</div></div>
               </div>
-              {engaged > 0 && (
-                <div style={S.cardFinance}>
-                  <div style={S.finRow}><span style={{ color: "#64748b" }}>Engagé</span><span style={{ color: "#f1f5f9", fontWeight: 600 }}>{fmtN(engaged)} FCFA</span></div>
-                  <div style={S.finRow}><span style={{ color: "#64748b" }}>Versé</span><span style={{ color: "#10b981", fontWeight: 600 }}>{fmtN(paid)} FCFA</span></div>
-                  {reste > 0 && <div style={S.finRow}><span style={{ color: "#64748b" }}>Reste</span><span style={{ color: "#f59e0b", fontWeight: 600 }}>{fmtN(reste)} FCFA</span></div>}
-                </div>
-              )}
-              <button style={S.deleteBtn} onClick={() => removeSupplier({ id: s._id })} title="Supprimer">
-                <i className="ti ti-trash" />
-              </button>
             </div>
           );
         })}
+        <div style={{ ...S.card, display:"flex", alignItems:"center", justifyContent:"center", border:"2px dashed #334155", cursor:"pointer", minHeight:180, flexDirection:"column" as const, gap:8, color:"#475569" }} onClick={() => open("add")}>
+          <i className="ti ti-plus" style={{ fontSize:28 }}/>
+          <span style={{ fontSize:13 }}>Ajouter un fournisseur</span>
+        </div>
       </div>
+
+      {modal && (
+        <div style={S.overlay} onClick={() => setModal(null)}>
+          <div style={S.modal} onClick={e=>e.stopPropagation()}>
+            <div style={S.modalTitle}>{modal.mode==="add"?"Nouveau fournisseur":"Modifier le fournisseur"}</div>
+            {([["name","Nom *","text","Ex: SABC Construction"],["phone","Téléphone","tel","Ex: +237 6XX XX XX XX"],["email","Email","email","contact@fournisseur.com"],["speciality","Spécialité","text","Ex: Maçonnerie, Plomberie..."],["address","Adresse","text","Ex: Douala, Cameroun"],["notes","Notes","text","Observations..."]]) as [keyof typeof EMPTY, string, string, string][]).map(([key,label,type,ph]) => (
+              <div key={key}>
+                <label style={S.label}>{label}</label>
+                <input style={S.input} type={type} value={form[key]} onChange={e=>setForm(f=>({...f,[key]:e.target.value}))} placeholder={ph} />
+              </div>
+            ))}
+            <div style={{ display:"flex", gap:8, marginTop:20 }}>
+              <button style={S.btnCancel} onClick={() => setModal(null)}>Annuler</button>
+              <button style={{ ...S.btnPrimary, flex:1 }} onClick={save} disabled={loading||!form.name.trim()}>{loading?"Sauvegarde...":"Sauvegarder"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {delId && (
+        <div style={S.overlay} onClick={()=>setDelId(null)}>
+          <div style={{ ...S.modal, maxWidth:360 }} onClick={e=>e.stopPropagation()}>
+            <div style={{ color:"#f1f5f9", fontWeight:600, fontSize:16, marginBottom:8 }}>Supprimer ce fournisseur ?</div>
+            <div style={{ color:"#94a3b8", fontSize:13, marginBottom:20 }}>Cette action est irréversible.</div>
+            <div style={{ display:"flex", gap:8 }}>
+              <button style={S.btnCancel} onClick={()=>setDelId(null)}>Annuler</button>
+              <button style={{ ...S.btnDanger, flex:1 }} onClick={confirmDel} disabled={loading}>{loading?"...":"Supprimer"}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function Loader() { return <div style={{ display:"flex",alignItems:"center",justifyContent:"center",height:"100%" }}><i className="ti ti-loader" style={{ fontSize:32,color:"#6366f1" }} /></div>; }
+function Loader() { return <div style={{ display:"flex",alignItems:"center",justifyContent:"center",height:200 }}><i className="ti ti-loader" style={{ fontSize:32,color:"#6366f1" }}/></div>; }
 
-const S: Record<string, React.CSSProperties> = {
-  page: { padding: 28 },
-  header: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 },
-  title: { fontSize: 22, fontWeight: 700, color: "#f1f5f9" },
-  sub: { fontSize: 13, color: "#64748b", marginTop: 4 },
-  btn: { background: "#6366f1", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 },
-  btnSec: { background: "#1e293b", color: "#94a3b8", border: "1px solid #334155", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer" },
-  formCard: { background: "#1e293b", border: "1px solid #334155", borderRadius: 12, padding: 20, marginBottom: 20 },
-  formGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 },
-  input: { background: "#0f172a", border: "1px solid #334155", color: "#e2e8f0", borderRadius: 8, padding: "8px 12px", fontSize: 13 },
-  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 },
-  card: { background: "#1e293b", border: "1px solid #334155", borderRadius: 12, padding: 20, position: "relative" },
-  cardHeader: { display: "flex", alignItems: "center", gap: 12, marginBottom: 14 },
-  avatar: { width: 40, height: 40, borderRadius: 10, background: "#6366f133", color: "#6366f1", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 18, flexShrink: 0 },
-  cardName: { fontWeight: 600, color: "#f1f5f9", fontSize: 14 },
-  cardSpec: { fontSize: 12, color: "#64748b", marginTop: 2 },
-  cardInfo: { fontSize: 12, color: "#94a3b8", display: "flex", flexDirection: "column", gap: 4, marginBottom: 12 },
-  cardFinance: { background: "#0f172a", borderRadius: 8, padding: "10px 14px", display: "flex", flexDirection: "column", gap: 4 },
-  finRow: { display: "flex", justifyContent: "space-between", fontSize: 12 },
-  deleteBtn: { position: "absolute", top: 12, right: 12, background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: 16, opacity: 0.5, padding: 4 },
+const S: Record<string,React.CSSProperties> = {
+  page:{ padding:28 }, title:{ fontSize:22, fontWeight:700, color:"#f1f5f9" }, sub:{ fontSize:13, color:"#64748b", marginTop:4 },
+  grid:{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(280px, 1fr))", gap:16 },
+  card:{ background:"#1e293b", border:"1px solid #334155", borderRadius:12, padding:20 },
+  avatar:{ width:44, height:44, borderRadius:12, background:"#6366f122", color:"#6366f1", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, fontWeight:700 },
+  contact:{ color:"#64748b", fontSize:12, display:"flex", alignItems:"center", gap:6, marginTop:4 },
+  divider:{ borderTop:"1px solid #334155", margin:"14px 0" },
+  btnPrimary:{ background:"#6366f1", color:"#fff", border:"none", borderRadius:8, padding:"10px 18px", fontSize:13, cursor:"pointer", fontWeight:600 },
+  btnIcon:{ background:"transparent", border:"none", color:"#64748b", cursor:"pointer", fontSize:16, padding:"4px 6px" },
+  btnCancel:{ background:"#334155", color:"#f1f5f9", border:"none", borderRadius:8, padding:"10px 20px", fontSize:13, cursor:"pointer" },
+  btnDanger:{ background:"#ef4444", color:"#fff", border:"none", borderRadius:8, padding:"10px 20px", fontSize:13, cursor:"pointer", fontWeight:600 },
+  overlay:{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, padding:16 },
+  modal:{ background:"#1e293b", border:"1px solid #334155", borderRadius:16, padding:28, width:"100%", maxWidth:480, maxHeight:"90vh", overflowY:"auto" as const },
+  modalTitle:{ fontSize:18, fontWeight:700, color:"#f1f5f9", marginBottom:20 },
+  label:{ display:"block", fontSize:11, color:"#94a3b8", marginBottom:4, marginTop:12, fontWeight:600, textTransform:"uppercase" as const, letterSpacing:0.5 },
+  input:{ width:"100%", background:"#0f172a", border:"1px solid #334155", borderRadius:8, color:"#f1f5f9", padding:"10px 12px", fontSize:14, boxSizing:"border-box" as const },
 };

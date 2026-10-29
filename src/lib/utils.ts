@@ -32,6 +32,9 @@ export const STATUS_COLORS: Record<string, string> = {
 export const METHOD_LABELS: Record<string, string> = {
   virement: "Virement",
   mobile: "Mobile Money",
+  mobile_money: "Mobile Money",
   especes: "Espèces",
   cheque: "Chèque",
 };
+
+// Extra alias for mobile_money

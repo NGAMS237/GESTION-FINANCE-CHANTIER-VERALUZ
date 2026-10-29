@@ -43,3 +43,10 @@ export const remove = mutation({
     await ctx.db.delete(id);
   },
 });
+
+export const listAll = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("phases").collect();
+  },
+});
