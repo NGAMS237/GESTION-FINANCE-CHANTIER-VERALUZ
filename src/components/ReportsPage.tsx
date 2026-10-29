@@ -195,7 +195,6 @@ function ReportCard({ icon, title, desc, color, onClick }: { icon: string; title
   );
 }
 
-function fmtN(n: number) { return Math.abs(n).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, " "); }
 function Loader() { return <div style={{ display:"flex",alignItems:"center",justifyContent:"center",height:"100%" }}><i className="ti ti-loader" style={{ fontSize:32,color:"#6366f1" }} /></div>; }
 
 const S: Record<string, React.CSSProperties> = {
