@@ -72,3 +72,20 @@ Le frontend reste un fichier HTML vanilla : seul le client change (`ConvexClient
 
 - Un projet Convex et une **deploy key** de développement, stockée dans l'environnement de la session (`CONVEX_DEPLOY_KEY`), jamais dans la conversation ni dans le dépôt.
 - Un export des 7 tables et du bucket `chantier-docs`, ou un accès en lecture seule, pour l'étape 4.
+
+## 6. Avancement
+
+| Étape | État |
+|---|---|
+| 1. Socle Convex | ✅ Schéma, fonctions par table, tests `convex-test` |
+| 2. Auth | ✅ Convex Auth e-mail + mot de passe, liste blanche `allowed_emails`, vérifiée à chaque appel |
+| 3. Frontend | ✅ Tous les appels `sb.from` / `sb.storage` remplacés ; écran de connexion ; mise à jour en direct |
+| 4. Données | ✅ Script `scripts/import-supabase.mjs` + fonctions `migration:*` (idempotent, contrôle des totaux) — **à exécuter** |
+| 5. Bascule | ⏳ Après déploiement et import |
+
+Écarts par rapport à Supabase :
+- Les URL de fichiers sont générées par Convex et ne sont envoyées qu'aux utilisateurs connectés. Elles restent
+  valables pour quiconque possède le lien : ne pas les partager.
+- `convex/_generated/` a été écrit à la main (aucun déploiement accessible pendant le développement) ;
+  le premier `npx convex dev` ou `npx convex deploy` le régénère.
+- Le workflow `supabase-keepalive.yml` est conservé jusqu'à l'arrêt de Supabase, pour garder un retour arrière possible.
