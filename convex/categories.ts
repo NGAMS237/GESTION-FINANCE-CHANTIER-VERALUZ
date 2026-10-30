@@ -45,3 +45,10 @@ export const remove = mutation({
     await ctx.db.delete(id);
   },
 });
+
+export const list = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("categories").collect();
+  },
+});

@@ -27,6 +27,7 @@ export const create = mutation({
     color: v.string(),
     owner_name: v.optional(v.string()),
     position: v.number(),
+    type: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("projects", args);
@@ -46,6 +47,7 @@ export const update = mutation({
     status: v.optional(v.string()),
     color: v.optional(v.string()),
     owner_name: v.optional(v.string()),
+    type: v.optional(v.string()),
   },
   handler: async (ctx, { id, ...fields }) => {
     await ctx.db.patch(id, fields);
