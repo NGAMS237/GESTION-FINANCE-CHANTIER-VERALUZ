@@ -11,9 +11,11 @@ import SuppliersPage from "./components/SuppliersPage";
 import ReportsPage from "./components/ReportsPage";
 import PhasesPage from "./components/PhasesPage";
 import ProjectsHome from "./components/ProjectsHome";
+import TasksPage from "./components/TasksPage";
+import DocumentsPage from "./components/DocumentsPage";
 import GlobalDashboard from "./components/GlobalDashboard";
 
-type Page = "dashboard" | "categories" | "phases" | "quotes" | "payments" | "suppliers" | "reports";
+type Page = "dashboard" | "categories" | "phases" | "quotes" | "payments" | "suppliers" | "reports" | "tasks" | "documents";
 
 const NAV = [
   { id: "dashboard",  icon: "ti-layout-dashboard", label: "Dashboard"     },
@@ -23,6 +25,8 @@ const NAV = [
   { id: "categories", icon: "ti-category",           label: "Catégories"   },
   { id: "phases",     icon: "ti-layers-intersect",   label: "Phases"       },
   { id: "reports",    icon: "ti-report",             label: "Rapports"     },
+  { id: "tasks",      icon: "ti-checkbox",           label: "Tâches"       },
+  { id: "documents",  icon: "ti-folder",             label: "Documents"    },
 ] as const;
 
 const BOTTOM_NAV = ["dashboard", "quotes", "payments", "suppliers", "reports"] as const;
@@ -125,6 +129,8 @@ export default function App() {
       case "payments":   return <PaymentsPage projectId={project._id} />;
       case "suppliers":  return <SuppliersPage projectId={project._id} />;
       case "reports":    return <ReportsPage project={project} />;
+      case "tasks":      return <TasksPage projectId={project._id} />;
+      case "documents":  return <DocumentsPage projectId={project._id} />;
     }
   };
 

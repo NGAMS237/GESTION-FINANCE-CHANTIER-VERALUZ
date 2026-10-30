@@ -117,6 +117,16 @@ export default function QuotesPage({ projectId }: Props) {
   };
 
   const isPrevu = form.status === "prevu";
+  const [view, setView] = useState<"list"|"kanban">("list");
+
+  // Kanban: group by status
+  const kanbanCols = [
+    { id:"prevu",    label:"Prévu",       color:"#8b5cf6" },
+    { id:"pending",  label:"En attente",  color:"#f59e0b" },
+    { id:"approved", label:"Approuvé",    color:"#3b82f6" },
+    { id:"partial",  label:"Partiel",     color:"#f97316" },
+    { id:"paid",     label:"Soldé",       color:"#10b981" },
+  ];
 
   return (
     <div style={S.page}>
@@ -131,11 +141,55 @@ export default function QuotesPage({ projectId }: Props) {
           <option value="all">Tous les statuts</option>
           {STATUS_OPTS.map(s=><option key={s} value={s}>{STATUS_META[s]?.label||s}</option>)}
         </select>
+        <div style={{ display:"flex", gap:4, background:"#1e293b", borderRadius:8, padding:3 }}>
+          {(["list","kanban"] as const).map(v => (
+            <button key={v} onClick={() => setView(v)} style={{ background:view===v?"#334155":"none", border:"none", borderRadius:6, color:view===v?"#e2e8f0":"#64748b", padding:"6px 12px", fontSize:12, cursor:"pointer", fontWeight:view===v?600:400 }}>
+              {v==="list" ? "≡ Liste" : "⊞ Kanban"}
+            </button>
+          ))}
+        </div>
         <button style={S.btnPrimary} onClick={openAdd}>+ Nouveau devis</button>
       </div>
 
-      {/* Table */}
-      <div style={S.tableWrap}>
+      {/* ── KANBAN VIEW ── */}
+      {view === "kanban" && (
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:12, marginBottom:16 }}>
+          {kanbanCols.map(col => {
+            const colQuotes = filtered.filter(q => q.status === col.id);
+            const colTotal  = colQuotes.reduce((s,q) => s+q.amount, 0);
+            return (
+              <div key={col.id} style={{ background:"#1e293b", borderRadius:12, border:`1px solid ${col.color}33`, overflow:"hidden" }}>
+                <div style={{ padding:"10px 12px", background:col.color+"22", borderBottom:"1px solid #334155", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                    <div style={{ width:7, height:7, borderRadius:"50%", background:col.color }} />
+                    <span style={{ fontSize:11, fontWeight:700, color:col.color }}>{col.label}</span>
+                  </div>
+                  <span style={{ fontSize:10, background:col.color+"33", color:col.color, padding:"1px 6px", borderRadius:10, fontWeight:600 }}>{colQuotes.length}</span>
+                </div>
+                <div style={{ padding:"8px", display:"flex", flexDirection:"column", gap:6, minHeight:80 }}>
+                  {colQuotes.length===0 && <div style={{ textAlign:"center", color:"#475569", fontSize:11, padding:"10px 0" }}>—</div>}
+                  {colQuotes.map(q => {
+                    const paid = paidByQuote[q._id]??0;
+                    return (
+                      <div key={q._id} onClick={() => openEdit(q)} style={{ background:"#0f172a", border:"1px solid #334155", borderLeft:`3px solid ${col.color}`, borderRadius:8, padding:"8px 10px", cursor:"pointer" }}>
+                        <div style={{ fontSize:12, fontWeight:500, color:"#e2e8f0", marginBottom:4, lineHeight:1.3 }}>{q.description}</div>
+                        {q.number && <div style={{ fontSize:10, color:"#64748b", marginBottom:3 }}>#{q.number}</div>}
+                        {q.supplier_id && <div style={{ fontSize:10, color:"#64748b", marginBottom:3 }}>👤 {supMap[q.supplier_id]??""}</div>}
+                        <div style={{ fontSize:11, fontWeight:700, color:col.color }}>{fmtN(q.amount)} {q.currency}</div>
+                        {paid > 0 && <div style={{ fontSize:10, color:"#10b981" }}>✓ {fmtN(paid)} versé</div>}
+                      </div>
+                    );
+                  })}
+                  {colTotal > 0 && <div style={{ fontSize:10, color:"#475569", textAlign:"center", paddingTop:4, borderTop:"1px solid #1e293b" }}>{fmtN(colTotal)} {filtered[0]?.currency??""}</div>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Table — hidden in kanban view */}
+      {view === "list" && <div style={S.tableWrap}>
         <div style={{ ...S.row, ...S.hdr }}>
           <span>N°</span><span>Description</span><span>Phase</span><span>Fournisseur</span><span>Montant</span><span>Versé</span><span>Statut</span><span>Actions</span>
         </div>
@@ -174,7 +228,7 @@ export default function QuotesPage({ projectId }: Props) {
             <span/><span/>
           </div>
         )}
-      </div>
+      </div>}
 
       {/* Add/Edit Modal */}
       {modal && (

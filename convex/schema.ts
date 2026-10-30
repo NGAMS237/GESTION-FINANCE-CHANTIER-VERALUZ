@@ -14,6 +14,7 @@ export default defineSchema({
     color: v.string(),
     owner_name: v.optional(v.string()),
     position: v.number(),
+    type: v.optional(v.string()),
   }),
 
   categories: defineTable({
@@ -64,5 +65,50 @@ export default defineSchema({
     address: v.optional(v.string()),
     speciality: v.optional(v.string()),
     notes: v.optional(v.string()),
+  }).index("by_project", ["project_id"]),
+
+  documents: defineTable({
+    project_id: v.id("projects"),
+    name: v.string(),
+    storage_id: v.optional(v.string()),
+    url: v.optional(v.string()),
+    file_type: v.string(),
+    size: v.optional(v.number()),
+    category: v.string(),
+    linked_to_type: v.optional(v.string()),
+    linked_to_id: v.optional(v.string()),
+    notes: v.optional(v.string()),
+  })
+    .index("by_project", ["project_id"])
+    .index("by_project_category", ["project_id", "category"]),
+
+  tasks: defineTable({
+    project_id: v.id("projects"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    status: v.string(),
+    priority: v.string(),
+    due_date: v.optional(v.string()),
+    linked_to_type: v.optional(v.string()),
+    linked_to_id: v.optional(v.string()),
+  })
+    .index("by_project", ["project_id"])
+    .index("by_project_status", ["project_id", "status"]),
+
+  members: defineTable({
+    project_id: v.id("projects"),
+    email: v.string(),
+    name: v.optional(v.string()),
+    role: v.string(),
+  })
+    .index("by_project", ["project_id"])
+    .index("by_email", ["email"]),
+
+  activity_log: defineTable({
+    project_id: v.id("projects"),
+    action: v.string(),
+    entity_type: v.string(),
+    entity_label: v.optional(v.string()),
+    amount: v.optional(v.number()),
   }).index("by_project", ["project_id"]),
 });
