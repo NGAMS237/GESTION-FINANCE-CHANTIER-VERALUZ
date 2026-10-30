@@ -20,8 +20,8 @@ const PDF_COLORS = {
 };
 
 export default function ReportsPage({ project }: Props) {
-  const quotes = useQuery(api.quotes.listAll);
-  const payments = useQuery(api.payments.listAll);
+  const quotes = useQuery(api.quotes.listByProject, { project_id: project._id });
+  const payments = useQuery(api.payments.listByProject, { project_id: project._id });
   const suppliers = useQuery(api.suppliers.listByProject, { project_id: project._id });
 
   if (!quotes || !payments || !suppliers) return <Loader />;

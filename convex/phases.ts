@@ -50,3 +50,16 @@ export const listAll = query({
     return await ctx.db.query("phases").collect();
   },
 });
+
+export const listByProject = query({
+  args: { project_id: v.id("projects") },
+  handler: async (ctx, { project_id }) => {
+    const categories = await ctx.db
+      .query("categories")
+      .withIndex("by_project", (q) => q.eq("project_id", project_id))
+      .collect();
+    const catIds = new Set(categories.map((c) => c._id));
+    const all = await ctx.db.query("phases").collect();
+    return all.filter((p) => catIds.has(p.category_id));
+  },
+});

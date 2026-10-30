@@ -16,7 +16,7 @@ const EMPTY_FORM = { name:"", description:"", position:0, status:"planned" };
 
 export default function PhasesPage({ projectId }: Props) {
   const categories = useQuery(api.categories.listByProject, { project_id: projectId });
-  const phases = useQuery(api.phases.listAll) as Phase[] | undefined;
+  const phases = useQuery(api.phases.listByProject, { project_id: projectId }) as Phase[] | undefined;
   const createPhase = useMutation(api.phases.create);
   const updatePhase = useMutation(api.phases.update);
   const deletePhase = useMutation(api.phases.remove);

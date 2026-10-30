@@ -22,11 +22,11 @@ const EMPTY: Record<string,any> = { phase_id:"", supplier_id:"", number:"", desc
 const EMPTY_PHASE = { category_id:"", name:"", status:"planned" };
 
 export default function QuotesPage({ projectId }: Props) {
-  const quotes     = useQuery(api.quotes.listAll);
-  const payments   = useQuery(api.payments.listAll);
+  const quotes     = useQuery(api.quotes.listByProject, { project_id: projectId });
+  const payments   = useQuery(api.payments.listByProject, { project_id: projectId });
   const suppliers  = useQuery(api.suppliers.listByProject, { project_id: projectId });
   const categories = useQuery(api.categories.listByProject, { project_id: projectId });
-  const phases     = useQuery(api.phases.listAll);
+  const phases     = useQuery(api.phases.listByProject, { project_id: projectId });
 
   const createQuote   = useMutation(api.quotes.create);
   const updateQuote   = useMutation(api.quotes.update);

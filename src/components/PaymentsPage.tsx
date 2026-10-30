@@ -9,8 +9,8 @@ const METHOD_OPTS = ["virement","especes","cheque","mobile_money","autre"];
 const EMPTY = { quote_id:"" as Id<"quotes">|"", date: new Date().toISOString().slice(0,10), amount:"", method:"virement", reference:"", note:"" };
 
 export default function PaymentsPage({ projectId }: Props) {
-  const payments = useQuery(api.payments.listAll);
-  const quotes = useQuery(api.quotes.listAll);
+  const payments = useQuery(api.payments.listByProject, { project_id: projectId });
+  const quotes = useQuery(api.quotes.listByProject, { project_id: projectId });
   const create = useMutation(api.payments.create);
   const remove = useMutation(api.payments.remove);
 

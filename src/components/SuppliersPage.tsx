@@ -17,8 +17,8 @@ const FIELDS: [keyof typeof EMPTY, string, string, string][] = [
 
 export default function SuppliersPage({ projectId }: Props) {
   const suppliers = useQuery(api.suppliers.listByProject, { project_id: projectId });
-  const quotes = useQuery(api.quotes.listAll);
-  const payments = useQuery(api.payments.listAll);
+  const quotes = useQuery(api.quotes.listByProject, { project_id: projectId });
+  const payments = useQuery(api.payments.listByProject, { project_id: projectId });
   const create = useMutation(api.suppliers.create);
   const update = useMutation(api.suppliers.update);
   const remove = useMutation(api.suppliers.remove);

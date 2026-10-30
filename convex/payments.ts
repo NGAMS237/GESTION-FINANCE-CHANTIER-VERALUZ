@@ -52,3 +52,20 @@ export const remove = mutation({
     await ctx.db.delete(id);
   },
 });
+
+export const listByProject = query({
+  args: { project_id: v.id("projects") },
+  handler: async (ctx, { project_id }) => {
+    const categories = await ctx.db
+      .query("categories")
+      .withIndex("by_project", (q) => q.eq("project_id", project_id))
+      .collect();
+    const catIds = new Set(categories.map((c) => c._id));
+    const phases = await ctx.db.query("phases").collect();
+    const phaseIds = new Set(phases.filter((p) => catIds.has(p.category_id)).map((p) => p._id));
+    const quotes = await ctx.db.query("quotes").collect();
+    const quoteIds = new Set(quotes.filter((q) => phaseIds.has(q.phase_id)).map((q) => q._id));
+    const all = await ctx.db.query("payments").collect();
+    return all.filter((p) => quoteIds.has(p.quote_id));
+  },
+});

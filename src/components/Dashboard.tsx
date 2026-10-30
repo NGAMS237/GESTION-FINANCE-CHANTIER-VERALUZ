@@ -20,11 +20,11 @@ const STATUS_FR: Record<string,string> = {
 };
 
 export default function Dashboard({ project }: Props) {
-  const quotes     = useQuery(api.quotes.listAll);
-  const payments   = useQuery(api.payments.listAll);
+  const quotes     = useQuery(api.quotes.listByProject, { project_id: project._id });
+  const payments   = useQuery(api.payments.listByProject, { project_id: project._id });
   const categories = useQuery(api.categories.listByProject, { project_id: project._id });
   const suppliers  = useQuery(api.suppliers.listByProject, { project_id: project._id });
-  const phases     = useQuery(api.phases.listAll);
+  const phases     = useQuery(api.phases.listByProject, { project_id: project._id });
 
   const isMobile = useIsMobile();
   if (!quotes || !payments || !categories || !suppliers || !phases) return <PageLoader />;
