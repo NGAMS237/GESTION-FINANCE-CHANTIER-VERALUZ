@@ -48,10 +48,24 @@ export default function Dashboard({ project }: Props) {
   const paidByQuote: Record<string, number> = {};
   payments.forEach(p => { paidByQuote[p.quote_id] = (paidByQuote[p.quote_id] ?? 0) + p.amount; });
 
-  /* ── Barres par catégorie (quote → phase → category) ── */
-  const phaseTocat: Record<string, string> = {};
-  phases.forEach(p => { phaseTocat[p._id] = p.category_id; });
+  /* ── Données par phase ── */
+  const catById: Record<string, string> = {};
+  categories.forEach(c => { catById[c._id] = c.name; });
 
+  const phaseData = phases
+    .map(ph => {
+      const phQuotes  = quotes.filter(q => q.phase_id === ph._id);
+      const engaged   = phQuotes.reduce((s, q) => s + q.amount, 0);
+      const versé     = phQuotes.reduce((s, q) => s + (paidByQuote[q._id] ?? 0), 0);
+      const reste     = Math.max(engaged - versé, 0);
+      const pct       = engaged > 0 ? Math.round((versé / engaged) * 100) : 0;
+      const catName   = catById[ph.category_id] ?? "";
+      return { name: ph.name, catName, engaged, versé, reste, pct, nDevis: phQuotes.length };
+    })
+    .filter(p => p.engaged > 0)
+    .sort((a, b) => b.engaged - a.engaged);
+
+  /* ── Barres par catégorie ── */
   const catBar = categories
     .map(cat => {
       const catPhaseIds = new Set(phases.filter(p => p.category_id === cat._id).map(p => p._id));
@@ -84,7 +98,7 @@ export default function Dashboard({ project }: Props) {
     return (
       <div style={{ background:"#0f172a", border:"1px solid #334155", borderRadius:8, padding:"8px 12px", fontSize:12 }}>
         {payload.map((p: any, i: number) => (
-          <div key={i} style={{ color: p.color, marginBottom:2 }}>{p.name}: <b>{fmtN(p.value)}</b> FCFA</div>
+          <div key={i} style={{ color: p.color, marginBottom:2 }}>{p.name}: <b>{fmtN(p.value)}</b> {project.currency}</div>
         ))}
       </div>
     );
@@ -111,6 +125,59 @@ export default function Dashboard({ project }: Props) {
         <Kpi icon="ti-clock"     color="#f59e0b" label="Reste à payer"  value={`${fmtN(totalReste)} ${project.currency}`}   sub="devis − versements" />
         <Kpi icon="ti-chart-bar" color="#3b82f6" label="Budget total"   value={`${fmtN(project.budget)} ${project.currency}`} sub={`Alloué : ${budgetUsePct}%`} />
       </div>
+
+      {/* ── Dépenses par phase ── */}
+      {phaseData.length > 0 && (
+        <Card title="Dépenses par phase" icon="ti-layers-intersect" style={{ marginBottom:16 }}>
+          <div style={{ display:"flex", flexDirection:"column", gap:0 }}>
+            {/* Header row */}
+            <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 90px 90px" : "1fr 130px 130px 130px 60px", gap:8, padding:"0 0 8px 0", borderBottom:"1px solid #334155", marginBottom:4 }}>
+              <span style={{ fontSize:11, color:"#475569", fontWeight:600, textTransform:"uppercase" as const, letterSpacing:0.5 }}>Phase / Catégorie</span>
+              <span style={{ fontSize:11, color:"#475569", fontWeight:600, textAlign:"right" as const }}>Engagé</span>
+              <span style={{ fontSize:11, color:"#10b981", fontWeight:600, textAlign:"right" as const }}>Versé</span>
+              {!isMobile && <span style={{ fontSize:11, color:"#f59e0b", fontWeight:600, textAlign:"right" as const }}>Reste à payer</span>}
+              {!isMobile && <span style={{ fontSize:11, color:"#475569", fontWeight:600, textAlign:"right" as const }}>%</span>}
+            </div>
+            {phaseData.map((ph, i) => (
+              <div key={i} style={{ padding:"12px 0", borderBottom: i < phaseData.length - 1 ? "1px solid #1e293b" : "none" }}>
+                {/* Top row */}
+                <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 90px 90px" : "1fr 130px 130px 130px 60px", gap:8, marginBottom:8, alignItems:"center" }}>
+                  <div>
+                    <div style={{ fontSize:13, fontWeight:600, color:"#e2e8f0", marginBottom:2 }}>{ph.name}</div>
+                    <div style={{ fontSize:11, color:"#475569" }}>{ph.catName} · {ph.nDevis} devis</div>
+                  </div>
+                  <div style={{ textAlign:"right" as const, fontSize:13, fontWeight:600, color:"#cbd5e1" }}>{fmtN(ph.engaged)}</div>
+                  <div style={{ textAlign:"right" as const, fontSize:13, fontWeight:600, color:"#10b981" }}>{fmtN(ph.versé)}</div>
+                  {!isMobile && (
+                    <div style={{ textAlign:"right" as const, fontSize:13, fontWeight:600, color: ph.reste > 0 ? "#f59e0b" : "#10b981" }}>
+                      {ph.reste > 0 ? fmtN(ph.reste) : "✓ Soldé"}
+                    </div>
+                  )}
+                  {!isMobile && (
+                    <div style={{ textAlign:"right" as const, fontSize:13, fontWeight:700, color: ph.pct >= 100 ? "#10b981" : ph.pct >= 50 ? "#6366f1" : "#f59e0b" }}>
+                      {ph.pct}%
+                    </div>
+                  )}
+                </div>
+                {/* Progress bar */}
+                <div style={{ background:"#0f172a", borderRadius:4, height:6, overflow:"hidden" }}>
+                  <div style={{
+                    height:"100%",
+                    width:`${Math.min(ph.pct, 100)}%`,
+                    background: ph.pct >= 100 ? "#10b981" : ph.pct >= 50 ? "#6366f1" : "#f59e0b",
+                    borderRadius:4,
+                    transition:"width 0.3s"
+                  }}/>
+                </div>
+                {/* Mobile: reste à payer inline */}
+                {isMobile && ph.reste > 0 && (
+                  <div style={{ fontSize:11, color:"#f59e0b", marginTop:5 }}>Reste : {fmtN(ph.reste)} {project.currency}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* ── Ligne 2 : Donut + Top fournisseurs ── */}
       <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"300px 1fr", gap:16, marginBottom:16 }}>
@@ -148,7 +215,7 @@ export default function Dashboard({ project }: Props) {
                   <div key={i}>
                     <div style={{ display:"flex", justifyContent:"space-between", fontSize:12, marginBottom:5 }}>
                       <span style={{ color:"#cbd5e1" }}>{s.name}</span>
-                      <span style={{ color:"#f1f5f9", fontWeight:600 }}>{fmtN(s.amount)} FCFA</span>
+                      <span style={{ color:"#f1f5f9", fontWeight:600 }}>{fmtN(s.amount)} {project.currency}</span>
                     </div>
                     <div style={{ background:"#0f172a", borderRadius:4, height:6, overflow:"hidden" }}>
                       <div style={{ height:"100%", width:`${Math.round((s.amount/maxSup)*100)}%`, background:BAR_COLORS[i % BAR_COLORS.length], borderRadius:4 }}/>
@@ -200,13 +267,13 @@ export default function Dashboard({ project }: Props) {
             )}
           </div>
           <div style={{ fontSize:12, color:"#64748b", marginBottom:14 }}>
-            {fmtN(totalVerse)} / {fmtN(project.budget)} FCFA versé
+            {fmtN(totalVerse)} / {fmtN(project.budget)} {project.currency} versé
           </div>
           <div style={{ background:"#0f172a", borderRadius:6, height:10, overflow:"hidden", marginBottom:6 }}>
-            <div style={{ height:"100%", width:"100%", background: avancement > 100 ? "#ef4444" : "#6366f1", borderRadius:6 }}/>
+            <div style={{ height:"100%", width:`${Math.min(avancement,100)}%`, background: avancement > 100 ? "#ef4444" : "#6366f1", borderRadius:6 }}/>
           </div>
           <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#475569" }}>
-            <span>0%</span><span>Budget : {fmtN(project.budget)} FCFA</span><span>{avancement}%</span>
+            <span>0%</span><span>Budget : {fmtN(project.budget)} {project.currency}</span><span>{avancement}%</span>
           </div>
         </Card>
       </div>
